@@ -283,15 +283,16 @@ async function fetchFromGitHub() {
         displayFiles(files);
         showStatus(`✅ System Online: ${files.length} files loaded`, 'success');
 
-    } catch (error) {, b) => b.path.localeCompare(a.path)); 
-
-        displayFiles(files);
-        showStatus(`✅ System Online: ${files.length} files loaded`, 'success');
-
     } catch (error) {
         console.error(error);
         savedCodesDiv.innerHTML = '<p class="empty-message">Connection Failed</p>';
         showStatus('❌ Error: ' + error.message, 'error');
+    } finally {
+        loadBtn.disabled = false;
+        loadBtn.textContent = 'Refresh';
+    }
+}
+
 // Filter files based on search
 function filterFiles(searchTerm) {
     if (!searchTerm) {
@@ -315,12 +316,6 @@ function displayFiles(files) {
         savedCodesDiv.innerHTML = '<p class="empty-message">No matching files found</p>';
         return;
     }
-    
-    files.forEach(file => {
-
-// Display files list
-function displayFiles(files) {
-    savedCodesDiv.innerHTML = '';
     
     files.forEach(file => {
         const div = document.createElement('div');
