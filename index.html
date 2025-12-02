@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Syncer - Hacker Terminal</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-black">
+    <div class="full-screen-layout">
+        <header>
+            <h1>>_ Code Syncer</h1>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="settingsBtn" class="btn-icon" title="Configure Token">🔑</button>
+                <div class="theme-selector">
+                    <select id="themeSelect">
+                        <option value="theme-black">Black (Default)</option>
+                        <option value="theme-white">White (Light)</option>
+                        <option value="theme-green">Green (Matrix)</option>
+                        <option value="theme-orange">Orange (Retro)</option>
+                        <option value="theme-blue">Blue (Cyber)</option>
+                        <option value="theme-dark">Dark (Modern)</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Configuration</h2>
+                    <span id="closeSettingsBtn" class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="tokenInput">GitHub Personal Access Token</label>
+                        <input type="password" id="tokenInput" class="text-input" placeholder="ghp_...">
+                        <p style="font-size: 0.8rem; margin-top: 5px; opacity: 0.7;">
+                            Token is stored locally in your browser. It is never sent to any server other than GitHub API.
+                        </p>
+                    </div>
+                    <button id="saveTokenBtn" class="btn">Save Configuration</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="editor-section">
+            <div class="form-group">
+                <label for="language">Language</label>
+                <select id="language" class="select-input">
+                    <option value="python">🐍 Python</option>
+                    <option value="java">☕ Java</option>
+                    <option value="javascript">📜 JavaScript</option>
+                    <option value="cpp">🇨 C++</option>
+                    <option value="csharp">#️⃣ C#</option>
+                    <option value="go">🐹 Go</option>
+                    <option value="rust">🦀 Rust</option>
+                    <option value="php">🐘 PHP</option>
+                    <option value="ruby">💎 Ruby</option>
+                    <option value="swift">🐦 Swift</option>
+                    <option value="kotlin">🎯 Kotlin</option>
+                    <option value="typescript">📘 TypeScript</option>
+                    <option value="sql">🗄️ SQL</option>
+                    <option value="html">🌐 HTML</option>
+                    <option value="css">🎨 CSS</option>
+                    <option value="other">📝 Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="codeTitle">Filename / Title</label>
+                <input type="text" id="codeTitle" class="text-input" placeholder="Title or filename...">
+            </div>
+
+            <div class="form-group" style="flex-grow: 1; display: flex; flex-direction: column;">
+                <label for="codeInput">Code Input</label>
+                <textarea 
+                    id="codeInput" 
+                    class="code-textarea" 
+                    placeholder="// Write your code here..."
+                    spellcheck="false"
+                ></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea 
+                    id="description" 
+                    class="description-textarea" 
+                    placeholder="Add comments..."
+                    style="min-height: 60px;"
+                ></textarea>
+            </div>
+
+            <div class="button-group">
+                <button id="saveBtn" class="btn">Submit Code</button>
+                <button id="clearBtn" class="btn btn-secondary">Clear</button>
+            </div>
+
+            <div id="status" class="status-message"></div>
+        </div>
+
+        <div class="files-section">
+            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2>📂 Repository</h2>
+                <button id="loadBtn" class="btn btn-secondary">Refresh</button>
+            </div>
+            <div id="savedCodes" class="saved-codes-container">
+                <p class="empty-message">Initializing connection...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
