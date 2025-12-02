@@ -30,9 +30,11 @@ const settingsModal = document.getElementById('settingsModal');
 const saveTokenBtn = document.getElementById('saveTokenBtn');
 const tokenInput = document.getElementById('tokenInput');
 const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+const searchInput = document.getElementById('searchInput');
 
 // State for editing
 let editingFile = null; // { path: string, sha: string }
+let allFiles = []; // Store all files for searching
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -66,6 +68,11 @@ function setupEventListeners() {
         if (e.target === settingsModal) {
             closeSettings();
         }
+    });
+
+    // Search functionality
+    searchInput.addEventListener('input', (e) => {
+        filterFiles(e.target.value);
     });
 
     // Prevent tab key from leaving textarea
@@ -270,12 +277,13 @@ async function fetchFromGitHub() {
         
         const files = treeData.tree.filter(item => item.type === 'blob');
         
-        if (files.length === 0) {
-            savedCodesDiv.innerHTML = '<p class="empty-message">Repository is empty</p>';
-            return;
-        }
-
         files.sort((a, b) => b.path.localeCompare(a.path)); 
+
+        allFiles = files; // Save for searching
+        displayFiles(files);
+        showStatus(`✅ System Online: ${files.length} files loaded`, 'success');
+
+    } catch (error) {, b) => b.path.localeCompare(a.path)); 
 
         displayFiles(files);
         showStatus(`✅ System Online: ${files.length} files loaded`, 'success');
@@ -284,11 +292,31 @@ async function fetchFromGitHub() {
         console.error(error);
         savedCodesDiv.innerHTML = '<p class="empty-message">Connection Failed</p>';
         showStatus('❌ Error: ' + error.message, 'error');
-    } finally {
-        loadBtn.disabled = false;
-        loadBtn.textContent = 'Refresh';
+// Filter files based on search
+function filterFiles(searchTerm) {
+    if (!searchTerm) {
+        displayFiles(allFiles);
+        return;
     }
+    
+    const term = searchTerm.toLowerCase();
+    const filtered = allFiles.filter(file => 
+        file.path.toLowerCase().includes(term)
+    );
+    
+    displayFiles(filtered);
 }
+
+// Display files list
+function displayFiles(files) {
+    savedCodesDiv.innerHTML = '';
+    
+    if (files.length === 0) {
+        savedCodesDiv.innerHTML = '<p class="empty-message">No matching files found</p>';
+        return;
+    }
+    
+    files.forEach(file => {
 
 // Display files list
 function displayFiles(files) {
