@@ -51,6 +51,26 @@
             </div>
         </div>
 
+        <!-- File View Modal -->
+        <div id="fileViewModal" class="modal file-view-modal">
+            <div class="modal-content file-view-content">
+                <div class="modal-header">
+                    <h2 id="viewFileName">Filename.ext</h2>
+                    <span id="closeFileViewBtn" class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="viewFileDescription" class="file-description"></div>
+                    <div class="code-container">
+                        <pre id="viewFileCode" class="code-block"></pre>
+                    </div>
+                    <div class="file-view-actions">
+                        <button id="downloadFileBtn" class="btn">Download File</button>
+                        <button class="btn btn-secondary" onclick="document.getElementById('fileViewModal').style.display='none'">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="editor-section">
             <div class="controls-row" style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 15px; flex-wrap: wrap;">
                 <div class="form-group" style="flex: 0 0 auto; margin-bottom: 0;">

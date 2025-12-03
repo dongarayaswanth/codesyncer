@@ -32,8 +32,17 @@ const tokenInput = document.getElementById('tokenInput');
 const closeSettingsBtn = document.getElementById('closeSettingsBtn');
 const searchInput = document.getElementById('searchInput');
 
+// File View Modal Elements
+const fileViewModal = document.getElementById('fileViewModal');
+const closeFileViewBtn = document.getElementById('closeFileViewBtn');
+const viewFileName = document.getElementById('viewFileName');
+const viewFileDescription = document.getElementById('viewFileDescription');
+const viewFileCode = document.getElementById('viewFileCode');
+const downloadFileBtn = document.getElementById('downloadFileBtn');
+
 // State for editing
 let editingFile = null; // { path: string, sha: string }
+let currentViewFile = null; // { name: string, content: string }
 let allFiles = []; // Store all files for searching
 
 // Initialize
@@ -68,7 +77,17 @@ function setupEventListeners() {
         if (e.target === settingsModal) {
             closeSettings();
         }
+        if (e.target === fileViewModal) {
+            fileViewModal.style.display = 'none';
+        }
     });
+
+    // File View Modal
+    closeFileViewBtn.addEventListener('click', () => {
+        fileViewModal.style.display = 'none';
+    });
+    
+    downloadFileBtn.addEventListener('click', downloadCurrentFile);
 
     // Search functionality
     searchInput.addEventListener('input', (e) => {
@@ -425,7 +444,6 @@ function displayFiles(files) {
                     </button>
                 </div>
             </div>
-            <div id="content-${file.sha}" class="file-content" style="display:none;"></div>
         `;
         savedCodesDiv.appendChild(div);
     });
@@ -540,14 +558,8 @@ async function deleteFile(path, sha) {
 
 // View file content
 async function viewFile(url, sha) {
-    const container = document.getElementById(`content-${sha}`);
-    
-    if (container.style.display === 'block') {
-        container.style.display = 'none';
-        return;
-    }
-
     try {
+        showStatus('Loading file...', 'info');
         const response = await fetch(url, {
             headers: { 'Authorization': `token ${CONFIG.token}` }
         });
@@ -556,16 +568,63 @@ async function viewFile(url, sha) {
         // Decode content
         const content = decodeURIComponent(escape(atob(data.content)));
         
-        container.style.display = 'block';
-        container.innerHTML = `
-            <pre class="code-item-code">${escapeHtml(content)}</pre>
-            <button class="btn-small" onclick="copyToClipboard(this)">📋 Copy</button>
-            <button class="btn-small btn-secondary" onclick="this.parentElement.style.display='none'">❌ Close</button>
-        `;
+        // Parse metadata
+        let code = content;
+        let description = '';
+        let title = data.name;
+        
+        const metadataMatch = content.match(/^\/\*([\s\S]*?)\*\/\s*([\s\S]*)/);
+        if (metadataMatch) {
+            const metadata = metadataMatch[1];
+            code = metadataMatch[2];
+            
+            const titleMatch = metadata.match(/Title: (.*)/);
+            if (titleMatch) title = titleMatch[1].trim();
+            
+            const descMatch = metadata.match(/Description: (.*)/);
+            if (descMatch) description = descMatch[1].trim();
+        }
+
+        // Populate Modal
+        viewFileName.textContent = title;
+        viewFileCode.textContent = code;
+        
+        if (description) {
+            viewFileDescription.textContent = description;
+            viewFileDescription.style.display = 'block';
+        } else {
+            viewFileDescription.style.display = 'none';
+        }
+
+        // Store for download
+        currentViewFile = {
+            name: title,
+            content: content // Download the full content including metadata
+        };
+
+        // Show Modal
+        fileViewModal.style.display = 'block';
+        showStatus('✅ File loaded', 'success');
         
     } catch (error) {
+        console.error(error);
         showStatus('❌ Error loading file content', 'error');
     }
+}
+
+function downloadCurrentFile() {
+    if (!currentViewFile) return;
+    
+    const blob = new Blob([currentViewFile.content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = currentViewFile.name;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    showStatus('⬇️ Download started', 'success');
 }
 
 function copyToClipboard(btn) {
