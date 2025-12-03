@@ -5,12 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Code Syncer - Hacker Terminal</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" type='text/css' href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css" />
 </head>
 <body class="theme-black">
     <div class="full-screen-layout">
         <header>
             <h1>>_ Code Syncer</h1>
             <div style="display: flex; gap: 10px; align-items: center;">
+                <div class="font-controls" style="display: flex; gap: 5px; align-items: center; margin-right: 10px;">
+                    <button id="decreaseFontBtn" class="btn btn-small" style="font-weight: bold; width: 30px;">-</button>
+                    <div id="fontSizeDisplay" style="padding: 5px 10px; border: 1px solid var(--border-color); background: var(--input-bg); border-radius: var(--border-radius); min-width: 40px; text-align: center; font-size: 0.9rem;">14px</div>
+                    <button id="increaseFontBtn" class="btn btn-small" style="font-weight: bold; width: 30px;">+</button>
+                </div>
                 <button id="settingsBtn" class="btn-icon" title="Configure Token">🔑</button>
                 <div class="theme-selector">
                     <select id="themeSelect">
@@ -46,31 +52,40 @@
         </div>
 
         <div class="editor-section">
-            <div class="form-group">
-                <label for="language">Language</label>
-                <select id="language" class="select-input">
-                    <option value="python">🐍 Python</option>
-                    <option value="java">☕ Java</option>
-                    <option value="javascript">📜 JavaScript</option>
-                    <option value="cpp">🇨 C++</option>
-                    <option value="csharp">#️⃣ C#</option>
-                    <option value="go">🐹 Go</option>
-                    <option value="rust">🦀 Rust</option>
-                    <option value="php">🐘 PHP</option>
-                    <option value="ruby">💎 Ruby</option>
-                    <option value="swift">🐦 Swift</option>
-                    <option value="kotlin">🎯 Kotlin</option>
-                    <option value="typescript">📘 TypeScript</option>
-                    <option value="sql">🗄️ SQL</option>
-                    <option value="html">🌐 HTML</option>
-                    <option value="css">🎨 CSS</option>
-                    <option value="other">📝 Other</option>
-                </select>
-            </div>
+            <div class="controls-row" style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 15px; flex-wrap: wrap;">
+                <div class="form-group" style="flex: 0 0 auto; margin-bottom: 0;">
+                    <div class="custom-select-wrapper">
+                        <div class="custom-select" id="customLanguageSelect">
+                            <div class="custom-select-trigger">
+                                <i class="devicon-python-plain"></i> <span>Python</span>
+                            </div>
+                            <div class="custom-options">
+                                <div class="custom-option selected" data-value="python"><i class="devicon-python-plain"></i> Python</div>
+                                <div class="custom-option" data-value="java"><i class="devicon-java-plain"></i> Java</div>
+                                <div class="custom-option" data-value="javascript"><i class="devicon-javascript-plain"></i> JavaScript</div>
+                                <div class="custom-option" data-value="cpp"><i class="devicon-cplusplus-plain"></i> C++</div>
+                                <div class="custom-option" data-value="csharp"><i class="devicon-csharp-plain"></i> C#</div>
+                                <div class="custom-option" data-value="go"><i class="devicon-go-plain"></i> Go</div>
+                                <div class="custom-option" data-value="rust"><i class="devicon-rust-plain"></i> Rust</div>
+                                <div class="custom-option" data-value="php"><i class="devicon-php-plain"></i> PHP</div>
+                                <div class="custom-option" data-value="ruby"><i class="devicon-ruby-plain"></i> Ruby</div>
+                                <div class="custom-option" data-value="swift"><i class="devicon-swift-plain"></i> Swift</div>
+                                <div class="custom-option" data-value="kotlin"><i class="devicon-kotlin-plain"></i> Kotlin</div>
+                                <div class="custom-option" data-value="typescript"><i class="devicon-typescript-plain"></i> TypeScript</div>
+                                <div class="custom-option" data-value="sql"><i class="devicon-mysql-plain"></i> SQL</div>
+                                <div class="custom-option" data-value="html"><i class="devicon-html5-plain"></i> HTML</div>
+                                <div class="custom-option" data-value="css"><i class="devicon-css3-plain"></i> CSS</div>
+                                <div class="custom-option" data-value="other"><i class="devicon-vscode-plain"></i> Other</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="language" value="python">
+                    </div>
+                </div>
 
-            <div class="form-group">
-                <label for="codeTitle">Filename / Title</label>
-                <input type="text" id="codeTitle" class="text-input" placeholder="Title or filename...">
+                <div class="form-group" style="flex-grow: 1; margin-bottom: 0;">
+                    <label for="codeTitle">Filename / Title</label>
+                    <input type="text" id="codeTitle" class="text-input" placeholder="Title or filename...">
+                </div>
             </div>
 
             <div class="form-group" style="flex-grow: 1; display: flex; flex-direction: column;">
@@ -114,6 +129,12 @@
             </div>
         </div>
     </div>
+
+    <footer style="text-align: center; padding: 20px; margin-top: 20px; border-top: 1px solid var(--border-color);">
+        <a href="https://dongarayaswanth.github.io/yaswanthdongara/" target="_blank" style="color: var(--primary-color); text-decoration: none; font-family: 'Courier New', monospace;">
+            &lt; Created by Yaswanth Dongara /&gt;
+        </a>
+    </footer>
 
     <script src="app.js"></script>
 </body>

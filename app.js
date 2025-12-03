@@ -75,8 +75,85 @@ function setupEventListeners() {
         filterFiles(e.target.value);
     });
 
+    // Custom Select Logic
+    setupCustomSelect();
+
+    // Font Size Logic
+    setupFontSize();
+
     // Prevent tab key from leaving textarea
     codeTextarea.addEventListener('keydown', handleTabKey);
+}
+
+function setupFontSize() {
+    const fontSizeDisplay = document.getElementById('fontSizeDisplay');
+    const increaseFontBtn = document.getElementById('increaseFontBtn');
+    const decreaseFontBtn = document.getElementById('decreaseFontBtn');
+    
+    let currentFontSize = parseInt(localStorage.getItem('fontSize')) || 14;
+
+    function updateFontSize() {
+        document.body.style.fontSize = `${currentFontSize}px`;
+        fontSizeDisplay.textContent = `${currentFontSize}px`;
+        localStorage.setItem('fontSize', currentFontSize);
+    }
+
+    // Initialize
+    updateFontSize();
+
+    increaseFontBtn.addEventListener('click', () => {
+        if (currentFontSize < 32) {
+            currentFontSize += 2;
+            updateFontSize();
+        }
+    });
+
+    decreaseFontBtn.addEventListener('click', () => {
+        if (currentFontSize > 10) {
+            currentFontSize -= 2;
+            updateFontSize();
+        }
+    });
+}
+
+function setupCustomSelect() {
+    const customSelect = document.getElementById('customLanguageSelect');
+    const trigger = customSelect.querySelector('.custom-select-trigger');
+    const options = customSelect.querySelectorAll('.custom-option');
+    const hiddenInput = document.getElementById('language');
+
+    // Toggle dropdown
+    trigger.addEventListener('click', () => {
+        customSelect.classList.toggle('open');
+    });
+
+    // Close on outside click
+    window.addEventListener('click', (e) => {
+        if (!customSelect.contains(e.target)) {
+            customSelect.classList.remove('open');
+        }
+    });
+
+    // Handle option selection
+    options.forEach(option => {
+        option.addEventListener('click', () => {
+            const value = option.getAttribute('data-value');
+            const html = option.innerHTML;
+            
+            // Update trigger
+            trigger.innerHTML = html;
+            
+            // Update hidden input
+            hiddenInput.value = value;
+            
+            // Update selected class
+            options.forEach(opt => opt.classList.remove('selected'));
+            option.classList.add('selected');
+            
+            // Close dropdown
+            customSelect.classList.remove('open');
+        });
+    });
 }
 
 function openSettings() {
@@ -142,7 +219,17 @@ function resetForm() {
     editingFile = null;
     saveBtn.textContent = 'Save to GitHub';
     codeTitleInput.disabled = false;
-    languageSelect.disabled = false;
+    
+    // Reset language to python
+    document.getElementById('language').value = 'python';
+    const customSelect = document.getElementById('customLanguageSelect');
+    const trigger = customSelect.querySelector('.custom-select-trigger');
+    const defaultOption = customSelect.querySelector('[data-value="python"]');
+    if (defaultOption) {
+        trigger.innerHTML = defaultOption.innerHTML;
+        customSelect.querySelectorAll('.custom-option').forEach(o => o.classList.remove('selected'));
+        defaultOption.classList.add('selected');
+    }
 }
 
 // Save code to GitHub
@@ -322,18 +409,19 @@ function displayFiles(files) {
         div.className = 'code-item';
         div.innerHTML = `
             <div class="code-item-header">
-                <div class="code-item-title">
-                    <h3>${file.path}</h3>
+                <div class="code-item-actions-left">
+                    <button class="btn-small" title="Edit" onclick="editFile('${file.url}', '${file.path}', '${file.sha}')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        <span>Edit</span>
+                    </button>
                 </div>
-                <div class="code-item-actions">
-                    <button class="btn-icon-small" title="Edit" onclick="editFile('${file.url}', '${file.path}', '${file.sha}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    </button>
-                    <button class="btn-icon-small btn-danger-icon" title="Delete" onclick="deleteFile('${file.path}', '${file.sha}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                    </button>
-                    <button class="btn-icon-small" title="View Code" onclick="viewFile('${file.url}', '${file.sha}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <div class="code-item-title">
+                    <h3 onclick="viewFile('${file.url}', '${file.sha}')" class="clickable-title">${file.path}</h3>
+                </div>
+                <div class="code-item-actions-right">
+                    <button class="btn-small btn-danger-icon" title="Delete" onclick="deleteFile('${file.path}', '${file.sha}')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        <span>Delete</span>
                     </button>
                 </div>
             </div>
@@ -381,7 +469,22 @@ async function editFile(url, path, sha) {
         const ext = '.' + path.split('.').pop();
         for (const [lang, extension] of Object.entries(getExtensionMap())) {
             if (extension === ext) {
-                languageSelect.value = lang;
+                // Update hidden input
+                document.getElementById('language').value = lang;
+                
+                // Update custom select UI
+                const customSelect = document.getElementById('customLanguageSelect');
+                const options = customSelect.querySelectorAll('.custom-option');
+                const trigger = customSelect.querySelector('.custom-select-trigger');
+                
+                options.forEach(opt => {
+                    if (opt.getAttribute('data-value') === lang) {
+                        opt.classList.add('selected');
+                        trigger.innerHTML = opt.innerHTML;
+                    } else {
+                        opt.classList.remove('selected');
+                    }
+                });
                 break;
             }
         }
