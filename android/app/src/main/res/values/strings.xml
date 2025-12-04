@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Code Syncer</string>
+    <string name="title_activity_main">Code Syncer</string>
+    <string name="package_name">com.codesyncer.app</string>
+    <string name="custom_url_scheme">com.codesyncer.app</string>
+</resources>
