@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "append_styles",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"echo \"/* Creator Link Styles */\n.creator-link {\n    color: var(--primary-color);\n    text-decoration: none;\n    font-family: 'Courier New', monospace;\n    font-size: 1.1rem;\n    padding: 10px 20px;\n    border: 1px solid var(--primary-color);\n    border-radius: var(--border-radius);\n    display: inline-block;\n    transition: all 0.3s ease;\n    background: rgba(88, 166, 255, 0.1);\n    margin-top: 10px;\n}\n\n.creator-link:hover {\n    background: var(--primary-color);\n    color: var(--bg-color);\n    box-shadow: 0 0 15px var(--primary-color);\n    transform: translateY(-2px);\n}\n\" >> d:\\code\\styles.css"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

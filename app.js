@@ -2,8 +2,12 @@
 // CONFIGURATION
 // ===================================
 const CONFIG = {
-    owner: 'dongarayaswanth',
-    repo: 'codesyncer',
+    get owner() {
+        return localStorage.getItem('github_username') || '';
+    },
+    get repo() {
+        return localStorage.getItem('github_repo') || '';
+    },
     // Token is now managed via localStorage for security
     get token() {
         return localStorage.getItem('github_token');
@@ -29,8 +33,30 @@ const settingsBtn = document.getElementById('settingsBtn');
 const settingsModal = document.getElementById('settingsModal');
 const saveTokenBtn = document.getElementById('saveTokenBtn');
 const tokenInput = document.getElementById('tokenInput');
+const usernameInput = document.getElementById('usernameInput');
+const repoInput = document.getElementById('repoInput');
+const createRepoBtn = document.getElementById('createRepoBtn');
 const closeSettingsBtn = document.getElementById('closeSettingsBtn');
 const searchInput = document.getElementById('searchInput');
+const aiKeyInput = document.getElementById('aiKeyInput');
+
+// AI Elements
+const aiGenerateBtn = document.getElementById('aiGenerateBtn');
+const aiModal = document.getElementById('aiModal');
+const closeAiModalBtn = document.getElementById('closeAiModalBtn');
+const aiPromptInput = document.getElementById('aiPromptInput');
+const aiSubmitBtn = document.getElementById('aiSubmitBtn');
+const aiResultContainer = document.getElementById('aiResultContainer');
+const aiCodePreview = document.getElementById('aiCodePreview');
+const aiAcceptBtn = document.getElementById('aiAcceptBtn');
+const aiRejectBtn = document.getElementById('aiRejectBtn');
+const aiLoading = document.getElementById('aiLoading');
+
+// Chat Elements
+const chatHistory = document.getElementById('chatHistory');
+const chatInput = document.getElementById('chatInput');
+const chatSendBtn = document.getElementById('chatSendBtn');
+const chatClearBtn = document.getElementById('chatClearBtn');
 
 // File View Modal Elements
 const fileViewModal = document.getElementById('fileViewModal');
@@ -55,44 +81,64 @@ document.addEventListener('DOMContentLoaded', () => {
     if (CONFIG.token) {
         fetchFromGitHub();
     } else {
-        showStatus('⚠️ Please configure your GitHub Token', 'info');
-        openSettings();
+        // Only show status if statusDiv exists (it might not on all pages)
+        if (statusDiv) showStatus('⚠️ Please configure your GitHub Token', 'info');
+        // Don't auto-open settings on every page load, maybe just on home?
+        // openSettings(); 
     }
 });
 
 // Setup event listeners
 function setupEventListeners() {
-    saveBtn.addEventListener('click', saveToGitHub);
-    clearBtn.addEventListener('click', clearForm);
-    loadBtn.addEventListener('click', fetchFromGitHub);
-    themeSelect.addEventListener('change', changeTheme);
+    if (saveBtn) saveBtn.addEventListener('click', saveToGitHub);
+    if (clearBtn) clearBtn.addEventListener('click', clearForm);
+    if (loadBtn) loadBtn.addEventListener('click', fetchFromGitHub);
+    if (themeSelect) themeSelect.addEventListener('change', changeTheme);
     
     // Settings Modal
-    settingsBtn.addEventListener('click', openSettings);
-    closeSettingsBtn.addEventListener('click', closeSettings);
-    saveTokenBtn.addEventListener('click', saveToken);
+    if (settingsBtn) settingsBtn.addEventListener('click', openSettings);
+    if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettings);
+    if (saveTokenBtn) saveTokenBtn.addEventListener('click', saveSettings);
+    if (createRepoBtn) createRepoBtn.addEventListener('click', createRepository);
     
     // Close modal on outside click
     window.addEventListener('click', (e) => {
         if (e.target === settingsModal) {
             closeSettings();
         }
-        if (e.target === fileViewModal) {
+        if (fileViewModal && e.target === fileViewModal) {
             fileViewModal.style.display = 'none';
+        }
+        if (aiModal && e.target === aiModal) {
+            aiModal.style.display = 'none';
         }
     });
 
-    // File View Modal
-    closeFileViewBtn.addEventListener('click', () => {
-        fileViewModal.style.display = 'none';
+    // AI Modal
+    if (aiGenerateBtn) aiGenerateBtn.addEventListener('click', openAiModal);
+    if (closeAiModalBtn) closeAiModalBtn.addEventListener('click', () => aiModal.style.display = 'none');
+    if (aiSubmitBtn) aiSubmitBtn.addEventListener('click', generateAiCode);
+    if (aiAcceptBtn) aiAcceptBtn.addEventListener('click', acceptAiCode);
+    if (aiRejectBtn) aiRejectBtn.addEventListener('click', () => {
+        aiResultContainer.style.display = 'none';
+        aiPromptInput.value = '';
     });
+
+    // File View Modal
+    if (closeFileViewBtn) {
+        closeFileViewBtn.addEventListener('click', () => {
+            fileViewModal.style.display = 'none';
+        });
+    }
     
-    downloadFileBtn.addEventListener('click', downloadCurrentFile);
+    if (downloadFileBtn) downloadFileBtn.addEventListener('click', downloadCurrentFile);
 
     // Search functionality
-    searchInput.addEventListener('input', (e) => {
-        filterFiles(e.target.value);
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            filterFiles(e.target.value);
+        });
+    }
 
     // Custom Select Logic
     setupCustomSelect();
@@ -101,7 +147,22 @@ function setupEventListeners() {
     setupFontSize();
 
     // Prevent tab key from leaving textarea
-    codeTextarea.addEventListener('keydown', handleTabKey);
+    if (codeTextarea) codeTextarea.addEventListener('keydown', handleTabKey);
+
+    // Chat Page Listeners
+    if (chatSendBtn) chatSendBtn.addEventListener('click', sendChatMessage);
+    if (chatClearBtn) chatClearBtn.addEventListener('click', clearChatHistory);
+    if (chatInput) {
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChatMessage();
+            }
+        });
+    }
+    
+    // Load chat history if on chat page
+    if (chatHistory) loadChatHistory();
 }
 
 function setupFontSize() {
@@ -137,6 +198,8 @@ function setupFontSize() {
 
 function setupCustomSelect() {
     const customSelect = document.getElementById('customLanguageSelect');
+    if (!customSelect) return;
+
     const trigger = customSelect.querySelector('.custom-select-trigger');
     const options = customSelect.querySelectorAll('.custom-option');
     const hiddenInput = document.getElementById('language');
@@ -177,6 +240,21 @@ function setupCustomSelect() {
 
 function openSettings() {
     tokenInput.value = CONFIG.token || '';
+    if (usernameInput) usernameInput.value = CONFIG.owner || '';
+    if (repoInput) repoInput.value = CONFIG.repo || '';
+    
+    // Hide AI Key input if default is present
+    if (typeof DEFAULT_AI_KEY !== 'undefined' && DEFAULT_AI_KEY) {
+        if (aiKeyInput) {
+            aiKeyInput.parentElement.style.display = 'none';
+        }
+    } else {
+        if (aiKeyInput) {
+            aiKeyInput.value = localStorage.getItem('ai_api_key') || '';
+            aiKeyInput.parentElement.style.display = 'block';
+        }
+    }
+    
     settingsModal.style.display = 'block';
 }
 
@@ -184,15 +262,175 @@ function closeSettings() {
     settingsModal.style.display = 'none';
 }
 
-function saveToken() {
+function saveSettings() {
     const token = tokenInput.value.trim();
-    if (token) {
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const repo = repoInput ? repoInput.value.trim() : '';
+    const aiKey = aiKeyInput ? aiKeyInput.value.trim() : '';
+
+    if (token && username && repo) {
         localStorage.setItem('github_token', token);
-        showStatus('✅ Token saved successfully', 'success');
+        localStorage.setItem('github_username', username);
+        localStorage.setItem('github_repo', repo);
+        if (aiKey) localStorage.setItem('ai_api_key', aiKey);
+        
+        showStatus('✅ Configuration saved successfully', 'success');
         closeSettings();
-        fetchFromGitHub();
+        if (typeof fetchFromGitHub === 'function') {
+            fetchFromGitHub();
+        }
     } else {
-        alert('Please enter a valid token');
+        alert('Please fill in all fields (Token, Username, Repository)');
+    }
+}
+
+// AI Functions
+function openAiModal() {
+    // Check for default key first, then local storage
+    const key = (typeof DEFAULT_AI_KEY !== 'undefined' && DEFAULT_AI_KEY) ? DEFAULT_AI_KEY : localStorage.getItem('ai_api_key');
+    
+    if (!key) {
+        alert('Please configure your AI API Key in Settings first.');
+        openSettings();
+        return;
+    }
+    aiModal.style.display = 'block';
+    aiPromptInput.focus();
+}
+
+async function generateAiCode() {
+    const prompt = aiPromptInput.value.trim();
+    const key = (typeof DEFAULT_AI_KEY !== 'undefined' && DEFAULT_AI_KEY) ? DEFAULT_AI_KEY : localStorage.getItem('ai_api_key');
+    
+    if (!prompt) return;
+    
+    aiLoading.style.display = 'block';
+    aiResultContainer.style.display = 'none';
+    aiSubmitBtn.disabled = true;
+
+    try {
+        // Use OpenRouter API (Free Models)
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${key}`,
+                'HTTP-Referer': window.location.href, // Required by OpenRouter
+                'X-Title': 'Code Syncer'
+            },
+            body: JSON.stringify({
+                model: "meta-llama/llama-3.3-70b-instruct:free",
+                messages: [
+                    {
+                        role: "system", 
+                        content: "You are an expert coding assistant. Return ONLY the code requested. Do not include markdown backticks (```) or explanations unless asked in comments."
+                    },
+                    {
+                        role: "user", 
+                        content: prompt
+                    }
+                ]
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error?.message || 'API Error');
+        }
+
+        const data = await response.json();
+        let code = data.choices[0].message.content;
+        
+        // Clean up markdown if present
+        code = code.replace(/^```\w*\n/, '').replace(/\n```$/, '');
+
+        aiCodePreview.textContent = code;
+        aiResultContainer.style.display = 'flex';
+
+    } catch (error) {
+        console.error(error);
+        alert('AI Generation Failed: ' + error.message);
+    } finally {
+        aiLoading.style.display = 'none';
+        aiSubmitBtn.disabled = false;
+    }
+}
+
+function acceptAiCode() {
+    const code = aiCodePreview.textContent;
+    if (codeTextarea) {
+        // Insert at cursor or append
+        const start = codeTextarea.selectionStart;
+        const end = codeTextarea.selectionEnd;
+        const text = codeTextarea.value;
+        
+        if (start || start === 0) {
+            codeTextarea.value = text.substring(0, start) + code + text.substring(end);
+        } else {
+            codeTextarea.value += code;
+        }
+        
+        // Trigger input event to resize if needed
+        codeTextarea.dispatchEvent(new Event('input'));
+    }
+    aiModal.style.display = 'none';
+    aiPromptInput.value = '';
+    aiResultContainer.style.display = 'none';
+    showStatus('✨ Code inserted!', 'success');
+}
+
+async function createRepository() {
+    const token = tokenInput.value.trim();
+    const repoName = repoInput.value.trim();
+
+    if (!token) {
+        alert('Please enter your GitHub Token first');
+        return;
+    }
+    if (!repoName) {
+        alert('Please enter a Repository Name');
+        return;
+    }
+
+    createRepoBtn.disabled = true;
+    createRepoBtn.textContent = 'Creating...';
+
+    try {
+        const response = await fetch('https://api.github.com/user/repos', {
+            method: 'POST',
+            headers: {
+                'Authorization': `token ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/vnd.github.v3+json'
+            },
+            body: JSON.stringify({
+                name: repoName,
+                private: false, // Default to public, user can change later
+                auto_init: true, // Create README so we have a main branch
+                description: 'Created via Code Syncer'
+            })
+        });
+
+        if (response.status === 201) {
+            alert(`✅ Repository "${repoName}" created successfully!`);
+            // Auto-fill username if empty (we can get it from the response owner.login)
+            const data = await response.json();
+            if (usernameInput && !usernameInput.value) {
+                usernameInput.value = data.owner.login;
+            }
+            saveSettings(); // Save the new config
+        } else if (response.status === 422) {
+            alert('❌ Repository already exists or name is invalid.');
+        } else {
+            const error = await response.json();
+            alert(`❌ Error: ${error.message}`);
+        }
+    } catch (error) {
+        console.error(error);
+        alert('❌ Network Error');
+    } finally {
+        createRepoBtn.disabled = false;
+        createRepoBtn.textContent = 'Create Repo';
     }
 }
 
@@ -346,6 +584,8 @@ ${code}`;
 
 // Fetch files from GitHub
 async function fetchFromGitHub() {
+    if (!savedCodesDiv) return;
+
     const token = CONFIG.token;
     if (!token) {
         showStatus('❌ GitHub Token is missing in configuration', 'error');
@@ -651,6 +891,7 @@ function getExtensionMap() {
 
 // Helper: Show status
 function showStatus(msg, type) {
+    if (!statusDiv) return;
     statusDiv.textContent = msg;
     statusDiv.className = `status-message ${type}`;
     statusDiv.style.display = 'block';
@@ -662,4 +903,138 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Chat Functionality
+function loadChatHistory() {
+    const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+    chatHistory.innerHTML = ''; // Clear current
+    
+    // Add welcome message if empty
+    if (history.length === 0) {
+        chatHistory.innerHTML = `
+            <div class="chat-welcome" style="text-align: center; opacity: 0.7; margin-top: 50px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 10px;"><rect width="18" height="10" x="3" y="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" x2="8" y1="16" y2="16"/><line x1="16" x2="16" y1="16" y2="16"/></svg>
+                <p>Start a conversation with the AI...</p>
+            </div>
+        `;
+        return;
+    }
+
+    history.forEach(msg => appendMessageToUI(msg.role, msg.content));
+    scrollToBottom();
+}
+
+function appendMessageToUI(role, content) {
+    // Remove welcome message if it exists
+    const welcome = chatHistory.querySelector('.chat-welcome');
+    if (welcome) welcome.remove();
+
+    // Map 'assistant' to 'ai' for styling
+    const styleRole = role === 'assistant' ? 'ai' : role;
+    
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `chat-message ${styleRole}`;
+    
+    const sender = role === 'user' ? 'You' : 'AI';
+    
+    // Format content (simple markdown support)
+    let formattedContent = content
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/```(\w*)([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
+
+    msgDiv.innerHTML = `
+        <div class="chat-sender">${sender}</div>
+        <div class="chat-bubble">${formattedContent}</div>
+    `;
+    
+    chatHistory.appendChild(msgDiv);
+}
+
+function scrollToBottom() {
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+async function sendChatMessage() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    
+    const key = (typeof DEFAULT_AI_KEY !== 'undefined' && DEFAULT_AI_KEY) ? DEFAULT_AI_KEY : localStorage.getItem('ai_api_key');
+    
+    // Add user message
+    appendMessageToUI('user', text);
+    chatInput.value = '';
+    scrollToBottom();
+    
+    // Save to history
+    const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+    history.push({ role: 'user', content: text });
+    localStorage.setItem('chat_history', JSON.stringify(history));
+
+    // Show loading indicator
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'chat-message ai loading-msg';
+    loadingDiv.innerHTML = `
+        <div class="chat-sender">AI</div>
+        <div class="chat-bubble">Thinking...</div>
+    `;
+    chatHistory.appendChild(loadingDiv);
+    scrollToBottom();
+
+    try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${key}`,
+                'HTTP-Referer': window.location.href,
+                'X-Title': 'Code Syncer'
+            },
+            body: JSON.stringify({
+                model: "meta-llama/llama-3.3-70b-instruct:free",
+                messages: [
+                    {
+                        role: "system", 
+                        content: "You are a helpful coding assistant. Answer questions and provide code snippets."
+                    },
+                    ...history
+                ]
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('API Error');
+        }
+
+        const data = await response.json();
+        const aiText = data.choices[0].message.content;
+        
+        // Remove loading
+        loadingDiv.remove();
+        
+        // Add AI message
+        appendMessageToUI('assistant', aiText); // OpenRouter returns 'assistant'
+        scrollToBottom();
+        
+        // Save to history
+        history.push({ role: 'assistant', content: aiText });
+        localStorage.setItem('chat_history', JSON.stringify(history));
+
+    } catch (error) {
+        loadingDiv.innerHTML = `
+            <div class="chat-sender">System</div>
+            <div class="chat-bubble" style="color: var(--danger-color); border-color: var(--danger-color);">Error: ${error.message}</div>
+        `;
+    }
+}
+
+function clearChatHistory() {
+    if (confirm('Are you sure you want to clear the chat history?')) {
+        localStorage.removeItem('chat_history');
+        loadChatHistory();
+    }
 }
