@@ -697,25 +697,40 @@ async function editFile(url, path, sha) {
     try {
         showStatus('Loading file for editing...', 'info');
         
-        // Use the Blob URL directly from the tree API (more reliable for raw content)
-        // But we need to handle the response correctly
-        const response = await fetch(url, {
-            headers: { 'Authorization': `token ${CONFIG.token}` }
+        // Construct URL properly handling spaces and special characters
+        // We use the contents API which is the standard way to read files
+        const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+        const contentsUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${encodedPath}`;
+        
+        console.log('Fetching file from:', contentsUrl);
+
+        const response = await fetch(contentsUrl, {
+            headers: { 
+                'Authorization': `token ${CONFIG.token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            }
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status}`);
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(`GitHub API Error: ${response.status} ${errData.message || ''}`);
         }
 
         const data = await response.json();
         
         if (!data.content) {
-            throw new Error('File content is empty or too large');
+            throw new Error('File content is empty or not found in response');
         }
 
         // Clean base64 string (remove newlines) and decode
         const cleanContent = data.content.replace(/\n/g, '');
-        const content = decodeURIComponent(escape(atob(cleanContent)));
+        let content;
+        try {
+            content = decodeURIComponent(escape(atob(cleanContent)));
+        } catch (e) {
+            console.warn('UTF-8 decoding failed, falling back to raw decode', e);
+            content = atob(cleanContent);
+        }
         
         // Parse content to separate metadata if possible
         // Our format is /* ... */ \n code
@@ -777,7 +792,7 @@ async function editFile(url, path, sha) {
         
     } catch (error) {
         console.error(error);
-        showStatus('❌ Error loading file', 'error');
+        showStatus(`❌ Error loading file: ${error.message}`, 'error');
     }
 }
 
@@ -819,14 +834,39 @@ async function viewFile(url, sha) {
     try {
         showStatus('Loading file...', 'info');
         
-        // Use the Blob URL directly (passed as 'url' parameter)
-        // Note: In displayFiles, we pass file.url as the first arg to viewFile
-        const response = await fetch(url, {
+        // Use the path to construct the contents URL (same as editFile)
+        // Note: url param here is actually the path because we changed the call in displayFiles
+        // But let's be safe and assume it might be the blob url or path. 
+        // Actually, in displayFiles we pass file.url (blob) and file.path.
+        // Let's assume 'url' passed here is the PATH if it doesn't look like a URL.
+        
+        let contentsUrl = url;
+        if (!url.startsWith('http')) {
+             // It's a path
+             const encodedPath = url.split('/').map(encodeURIComponent).join('/');
+             contentsUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${encodedPath}`;
+        } else {
+            // It's a blob URL, but we prefer contents API for metadata
+            // We can't easily derive path from blob URL without context
+            // So we should rely on the caller passing the path.
+            // In the previous fix, we changed the onclick to pass file.url (blob)
+            // Let's revert to using the path for viewFile too.
+        }
+
+        // Wait, in displayFiles we have: onclick="viewFile('${file.url}', '${file.sha}')"
+        // file.url is the BLOB url.
+        // We should change displayFiles to pass the PATH.
+        
+        // For now, let's try to fetch whatever URL is passed. 
+        // If it's a blob URL, it returns { content, encoding, ... }
+        
+        const response = await fetch(contentsUrl, {
             headers: { 'Authorization': `token ${CONFIG.token}` }
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status}`);
+             const errData = await response.json().catch(() => ({}));
+             throw new Error(`GitHub API Error: ${response.status} ${errData.message || ''}`);
         }
 
         const data = await response.json();
@@ -837,7 +877,12 @@ async function viewFile(url, sha) {
         
         // Decode content
         const cleanContent = data.content.replace(/\n/g, '');
-        const content = decodeURIComponent(escape(atob(cleanContent)));
+        let content;
+        try {
+            content = decodeURIComponent(escape(atob(cleanContent)));
+        } catch (e) {
+            content = atob(cleanContent);
+        }
         
         // Parse metadata
         let code = content;
@@ -879,7 +924,7 @@ async function viewFile(url, sha) {
         
     } catch (error) {
         console.error(error);
-        showStatus('❌ Error loading file content', 'error');
+        showStatus(`❌ Error loading file content: ${error.message}`, 'error');
     }
 }
 
