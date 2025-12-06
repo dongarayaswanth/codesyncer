@@ -675,7 +675,7 @@ function displayFiles(files) {
                     </button>
                 </div>
                 <div class="code-item-title">
-                    <h3 onclick="viewFile('${file.url}', '${file.sha}')" class="clickable-title">${file.path}</h3>
+                    <h3 onclick="viewFile('${file.path}', '${file.sha}')" class="clickable-title">${file.path}</h3>
                 </div>
                 <div class="code-item-actions-right">
                     <button class="btn-small btn-danger-icon" title="Delete" onclick="deleteFile('${file.path}', '${file.sha}')">
@@ -693,7 +693,9 @@ function displayFiles(files) {
 async function editFile(url, path, sha) {
     try {
         showStatus('Loading file for editing...', 'info');
-        const response = await fetch(url, {
+        // Build the correct contents API URL
+        const contentsUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${path}`;
+        const response = await fetch(contentsUrl, {
             headers: { 'Authorization': `token ${CONFIG.token}` }
         });
         const data = await response.json();
@@ -800,7 +802,9 @@ async function deleteFile(path, sha) {
 async function viewFile(url, sha) {
     try {
         showStatus('Loading file...', 'info');
-        const response = await fetch(url, {
+        // The url parameter is now the path
+        const contentsUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${url}`;
+        const response = await fetch(contentsUrl, {
             headers: { 'Authorization': `token ${CONFIG.token}` }
         });
         const data = await response.json();
