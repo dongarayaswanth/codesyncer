@@ -6,6 +6,7 @@
     <title>Code Syncer - Repository</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" type='text/css' href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
 <body class="theme-black">
     <div class="full-screen-layout" style="grid-template-columns: 1fr;">
@@ -57,7 +58,7 @@
                     <div class="form-group">
                         <label for="repoInput">Repository Name</label>
                         <div style="display: flex; gap: 10px;">
-                            <input type="text" id="repoInput" class="text-input" placeholder="e.g. codesyncer">
+                            <input type="text" id="repoInput" class="text-input" style="flex: 1;" placeholder="e.g. codesyncer">
                             <button id="createRepoBtn" class="btn btn-small" title="Create this repository on GitHub">Create Repo</button>
                         </div>
                     </div>
@@ -75,6 +76,18 @@
                             Required for AI code generation. Stored locally. <a href="https://openrouter.ai/keys" target="_blank" style="color: var(--primary-color);">Get API Key</a>
                         </p>
                     </div>
+                    
+                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+                    
+                    <h3>Folder Security</h3>
+                    <div class="form-group">
+                        <label for="folderPassInput">Folder Password (Default: 0000)</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="password" id="folderPassInput" class="text-input" style="flex: 1;" placeholder="New Password">
+                            <button id="changeFolderPassBtn" class="btn btn-small">Change</button>
+                        </div>
+                    </div>
+
                     <button id="saveTokenBtn" class="btn">Save Configuration</button>
                 </div>
             </div>
@@ -94,6 +107,7 @@
                     </div>
                     <div class="file-view-actions">
                         <button id="downloadFileBtn" class="btn">Download File</button>
+                        <button id="deleteViewFileBtn" class="btn btn-danger-icon">Delete File</button>
                         <button class="btn btn-secondary" onclick="document.getElementById('fileViewModal').style.display='none'">Close</button>
                     </div>
                 </div>
@@ -103,10 +117,25 @@
         <div class="files-section" style="height: 100%;">
             <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h2>📂 Repository</h2>
-                <button id="loadBtn" class="btn btn-secondary">Refresh</button>
+                <div style="display: flex; gap: 10px;">
+                    <div class="view-switcher" style="display: flex; border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow: hidden;">
+                        <button id="listViewBtn" class="btn-icon active" title="List View" style="border: none; border-radius: 0; padding: 5px 10px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                        </button>
+                        <button id="gridViewBtn" class="btn-icon" title="Grid View" style="border: none; border-radius: 0; padding: 5px 10px; border-left: 1px solid var(--border-color);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        </button>
+                    </div>
+                    <button id="createFolderBtn" class="btn btn-small">New Folder</button>
+                    <button id="moveSelectedBtn" class="btn btn-small btn-secondary" style="display: none;">Move Selected</button>
+                    <button id="loadBtn" class="btn btn-secondary">Refresh</button>
+                </div>
             </div>
             <div class="form-group">
                 <input type="text" id="searchInput" class="text-input" placeholder="🔍 Search files...">
+            </div>
+            <div id="breadcrumb" class="breadcrumb" style="margin-bottom: 10px; font-family: monospace; color: var(--primary-color);">
+                <span class="breadcrumb-item" data-path="" style="cursor: pointer;">root</span>
             </div>
             <div id="savedCodes" class="saved-codes-container">
                 <p class="empty-message">Initializing connection...</p>

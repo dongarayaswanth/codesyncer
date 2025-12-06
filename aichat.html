@@ -6,6 +6,7 @@
     <title>Code Syncer - AI Chat</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" type='text/css' href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="theme-black">
     <div class="full-screen-layout" style="grid-template-columns: 1fr;">
@@ -92,7 +93,11 @@
             <div class="chat-input-area" style="display: flex; gap: 10px; align-items: flex-end;">
                 <textarea id="chatInput" class="text-input" placeholder="Type your message..." style="flex-grow: 1; min-height: 50px; resize: vertical;"></textarea>
                 <div style="display: flex; flex-direction: column; gap: 5px;">
-                    <button id="chatSendBtn" class="btn" style="height: 50px;">Send</button>
+                    <button id="chatSendBtn" class="btn" style="height: 40px;">Send</button>
+                    <div style="display: flex; gap: 5px;">
+                        <button id="chatExportPdfBtn" class="btn btn-secondary btn-small" title="Export as PDF" style="flex: 1;">PDF</button>
+                        <button id="chatExportTxtBtn" class="btn btn-secondary btn-small" title="Export as Text" style="flex: 1;">TXT</button>
+                    </div>
                     <button id="chatClearBtn" class="btn btn-secondary btn-small" title="Clear Chat History">Clear</button>
                 </div>
             </div>

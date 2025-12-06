@@ -57,6 +57,8 @@ const chatHistory = document.getElementById('chatHistory');
 const chatInput = document.getElementById('chatInput');
 const chatSendBtn = document.getElementById('chatSendBtn');
 const chatClearBtn = document.getElementById('chatClearBtn');
+const chatExportPdfBtn = document.getElementById('chatExportPdfBtn');
+const chatExportTxtBtn = document.getElementById('chatExportTxtBtn');
 
 // File View Modal Elements
 const fileViewModal = document.getElementById('fileViewModal');
@@ -66,16 +68,37 @@ const viewFileDescription = document.getElementById('viewFileDescription');
 const viewFileCode = document.getElementById('viewFileCode');
 const downloadFileBtn = document.getElementById('downloadFileBtn');
 
+// New Elements for Folders & Encryption
+const createFolderBtn = document.getElementById('createFolderBtn');
+const moveSelectedBtn = document.getElementById('moveSelectedBtn');
+const breadcrumbDiv = document.getElementById('breadcrumb');
+const filePasswordInput = document.getElementById('filePassword');
+const changeFolderPassBtn = document.getElementById('changeFolderPassBtn');
+const folderPassInput = document.getElementById('folderPassInput');
+
 // State for editing
 let editingFile = null; // { path: string, sha: string }
 let currentViewFile = null; // { name: string, content: string }
 let allFiles = []; // Store all files for searching
+let currentPath = ''; // Current folder path
+let selectedFiles = new Set(); // Selected files for moving
+let currentViewMode = localStorage.getItem('viewMode') || 'list'; // 'list' or 'grid'
+
+// Folder Security
+const DEFAULT_FOLDER_PASS = '0000';
+function getFolderPassword() {
+    return localStorage.getItem('folder_password') || DEFAULT_FOLDER_PASS;
+}
+function setFolderPassword(pass) {
+    localStorage.setItem('folder_password', pass);
+}
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     console.log('App Initialized');
     setupEventListeners();
     loadTheme();
+    updateViewToggleButtons(); // Set initial state of buttons
     
     // Check for token
     if (CONFIG.token) {
@@ -167,6 +190,8 @@ function setupEventListeners() {
     // Chat Page Listeners
     if (chatSendBtn) chatSendBtn.addEventListener('click', sendChatMessage);
     if (chatClearBtn) chatClearBtn.addEventListener('click', clearChatHistory);
+    if (chatExportPdfBtn) chatExportPdfBtn.addEventListener('click', exportChatToPDF);
+    if (chatExportTxtBtn) chatExportTxtBtn.addEventListener('click', exportChatToText);
     if (chatInput) {
         chatInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -178,6 +203,65 @@ function setupEventListeners() {
     
     // Load chat history if on chat page
     if (chatHistory) loadChatHistory();
+
+    // Folder & Move Listeners
+    if (createFolderBtn) createFolderBtn.addEventListener('click', createNewFolder);
+    if (moveSelectedBtn) moveSelectedBtn.addEventListener('click', moveSelectedFiles);
+    if (changeFolderPassBtn) changeFolderPassBtn.addEventListener('click', changeFolderPassword);
+
+    // View Switcher Listeners
+    const listViewBtn = document.getElementById('listViewBtn');
+    const gridViewBtn = document.getElementById('gridViewBtn');
+    if (listViewBtn) listViewBtn.addEventListener('click', () => setViewMode('list'));
+    if (gridViewBtn) gridViewBtn.addEventListener('click', () => setViewMode('grid'));
+
+    // Full Screen Toggle
+    const fullScreenBtn = document.getElementById('fullScreenBtn');
+    const codeEditorContainer = document.getElementById('codeEditorContainer');
+    
+    if (fullScreenBtn && codeEditorContainer) {
+        fullScreenBtn.addEventListener('click', () => {
+            codeEditorContainer.classList.toggle('code-fullscreen');
+            const isFullScreen = codeEditorContainer.classList.contains('code-fullscreen');
+            
+            // Update Icon
+            if (isFullScreen) {
+                fullScreenBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>';
+                fullScreenBtn.title = "Exit Full Screen";
+            } else {
+                fullScreenBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
+                fullScreenBtn.title = "Toggle Full Screen";
+            }
+        });
+        
+        // Exit full screen on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && codeEditorContainer.classList.contains('code-fullscreen')) {
+                fullScreenBtn.click();
+            }
+        });
+    }
+}
+
+function setViewMode(mode) {
+    currentViewMode = mode;
+    localStorage.setItem('viewMode', mode);
+    updateViewToggleButtons();
+    renderFileList();
+}
+
+function updateViewToggleButtons() {
+    const listViewBtn = document.getElementById('listViewBtn');
+    const gridViewBtn = document.getElementById('gridViewBtn');
+    if (!listViewBtn || !gridViewBtn) return;
+
+    if (currentViewMode === 'list') {
+        listViewBtn.classList.add('active');
+        gridViewBtn.classList.remove('active');
+    } else {
+        listViewBtn.classList.remove('active');
+        gridViewBtn.classList.add('active');
+    }
 }
 
 function setupFontSize() {
@@ -219,6 +303,18 @@ function setupCustomSelect() {
     const options = customSelect.querySelectorAll('.custom-option');
     const hiddenInput = document.getElementById('language');
 
+    // Load saved language
+    const savedLanguage = localStorage.getItem('preferred_language');
+    if (savedLanguage) {
+        const savedOption = Array.from(options).find(opt => opt.getAttribute('data-value') === savedLanguage);
+        if (savedOption) {
+            trigger.innerHTML = savedOption.innerHTML;
+            hiddenInput.value = savedLanguage;
+            options.forEach(opt => opt.classList.remove('selected'));
+            savedOption.classList.add('selected');
+        }
+    }
+
     // Toggle dropdown
     trigger.addEventListener('click', () => {
         customSelect.classList.toggle('open');
@@ -242,6 +338,9 @@ function setupCustomSelect() {
             
             // Update hidden input
             hiddenInput.value = value;
+            
+            // Save to localStorage
+            localStorage.setItem('preferred_language', value);
             
             // Update selected class
             options.forEach(opt => opt.classList.remove('selected'));
@@ -354,6 +453,12 @@ async function generateAiCode() {
         }
 
         const data = await response.json();
+        
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            console.error('Invalid AI Response:', data);
+            throw new Error('Received invalid response from AI provider. Please try again.');
+        }
+
         let code = data.choices[0].message.content;
         
         // Clean up markdown if present
@@ -492,11 +597,12 @@ function resetForm() {
     saveBtn.textContent = 'Save to GitHub';
     codeTitleInput.disabled = false;
     
-    // Reset language to python
-    document.getElementById('language').value = 'python';
+    // Reset language to saved preference or default to python
+    const savedLanguage = localStorage.getItem('preferred_language') || 'python';
+    document.getElementById('language').value = savedLanguage;
     const customSelect = document.getElementById('customLanguageSelect');
     const trigger = customSelect.querySelector('.custom-select-trigger');
-    const defaultOption = customSelect.querySelector('[data-value="python"]');
+    const defaultOption = customSelect.querySelector(`[data-value="${savedLanguage}"]`);
     if (defaultOption) {
         trigger.innerHTML = defaultOption.innerHTML;
         customSelect.querySelectorAll('.custom-option').forEach(o => o.classList.remove('selected'));
@@ -548,13 +654,26 @@ async function saveToGitHub() {
         }
         
         // Create file content with metadata header
-        const fileContent = `/*
+        let fileContent = `/*
 Title: ${title}
 Description: ${description}
 Date: ${new Date().toLocaleString()}
 */
 
 ${code}`;
+
+        // Handle Encryption
+        const password = filePasswordInput ? filePasswordInput.value : '';
+        if (password) {
+            try {
+                const encrypted = CryptoJS.AES.encrypt(fileContent, password).toString();
+                fileContent = `/* ENCRYPTED */\n${encrypted}`;
+                message += ' (Encrypted)';
+            } catch (e) {
+                console.error('Encryption failed', e);
+                throw new Error('Encryption failed');
+            }
+        }
 
         // Base64 encode content (required by GitHub API)
         const contentEncoded = btoa(unescape(encodeURIComponent(fileContent)));
@@ -638,10 +757,12 @@ async function fetchFromGitHub() {
         
         const files = treeData.tree.filter(item => item.type === 'blob');
         
-        files.sort((a, b) => b.path.localeCompare(a.path)); 
+        // Sort files: folders first (if we were getting tree objects), then files
+        // But here we only have blobs. We need to process them into a structure.
+        files.sort((a, b) => a.path.localeCompare(b.path)); 
 
         allFiles = files; // Save for searching
-        displayFiles(files);
+        renderFileList(); // Use new render function
         showStatus(`✅ System Online: ${files.length} files loaded`, 'success');
 
     } catch (error) {
@@ -654,57 +775,369 @@ async function fetchFromGitHub() {
     }
 }
 
+// Render File List (Supports Folders & Views)
+function renderFileList() {
+    if (!savedCodesDiv) return;
+    savedCodesDiv.innerHTML = '';
+    selectedFiles.clear();
+    updateMoveButton();
+
+    // Update Breadcrumb
+    updateBreadcrumb();
+
+    // Set View Mode Class
+    if (currentViewMode === 'grid') {
+        savedCodesDiv.classList.add('grid-view');
+    } else {
+        savedCodesDiv.classList.remove('grid-view');
+    }
+
+    // Filter files by current path
+    const items = new Map(); // Use Map to deduplicate folders
+
+    allFiles.forEach(file => {
+        if (file.path.startsWith(currentPath)) {
+            const relativePath = file.path.slice(currentPath.length);
+            const parts = relativePath.split('/');
+            
+            if (parts.length > 0 && parts[0] !== '') {
+                const name = parts[0];
+                const isFolder = parts.length > 1;
+                
+                if (!items.has(name)) {
+                    items.set(name, {
+                        name: name,
+                        path: currentPath + name + (isFolder ? '/' : ''),
+                        type: isFolder ? 'folder' : 'file',
+                        fileData: isFolder ? null : file
+                    });
+                } else if (isFolder) {
+                    items.get(name).type = 'folder';
+                    items.get(name).path = currentPath + name + '/';
+                }
+            }
+        }
+    });
+
+    const sortedItems = Array.from(items.values()).sort((a, b) => {
+        if (a.type === b.type) return a.name.localeCompare(b.name);
+        return a.type === 'folder' ? -1 : 1;
+    });
+
+    if (sortedItems.length === 0) {
+        savedCodesDiv.innerHTML = '<p class="empty-message">Folder is empty</p>';
+        return;
+    }
+
+    sortedItems.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'code-item';
+        
+        if (item.type === 'folder') {
+            if (currentViewMode === 'grid') {
+                div.innerHTML = `
+                    <div class="grid-item-content">
+                        <div class="grid-icon" onclick="enterFolder('${item.name}')">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        </div>
+                        <div class="grid-title" onclick="enterFolder('${item.name}')">${item.name}</div>
+                        <div class="grid-actions">
+                            <button class="btn-icon-small" title="Delete Folder" onclick="deleteFolder('${item.name}')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <div class="code-item-header">
+                        <div class="code-item-title" style="display: flex; align-items: center; gap: 10px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                            <h3 onclick="enterFolder('${item.name}')" class="clickable-title">${item.name}</h3>
+                        </div>
+                        <div class="code-item-actions-right">
+                            <button class="btn-small btn-danger-icon" title="Delete Folder" onclick="deleteFolder('${item.name}')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                <span>Delete</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            const file = item.fileData;
+            const safePath = file.path.replace(/'/g, "\\'");
+            
+            if (currentViewMode === 'grid') {
+                const ext = '.' + file.path.split('.').pop();
+                let iconClass = 'devicon-python-plain'; // Default
+                // Simple mapping
+                const map = {
+                    '.js': 'devicon-javascript-plain',
+                    '.html': 'devicon-html5-plain',
+                    '.css': 'devicon-css3-plain',
+                    '.java': 'devicon-java-plain',
+                    '.py': 'devicon-python-plain',
+                    '.cpp': 'devicon-cplusplus-plain',
+                    '.c': 'devicon-c-plain',
+                    '.cs': 'devicon-csharp-plain',
+                    '.go': 'devicon-go-plain',
+                    '.rs': 'devicon-rust-plain',
+                    '.php': 'devicon-php-plain',
+                    '.rb': 'devicon-ruby-plain',
+                    '.ts': 'devicon-typescript-plain',
+                    '.sql': 'devicon-mysql-plain',
+                    '.json': 'devicon-json-plain',
+                    '.md': 'devicon-markdown-original'
+                };
+                if (map[ext]) iconClass = map[ext];
+
+                div.innerHTML = `
+                    <div class="grid-item-content">
+                        <div class="grid-checkbox">
+                             <input type="checkbox" class="file-select-checkbox" data-path="${safePath}" onchange="toggleFileSelection('${safePath}')">
+                        </div>
+                        <div class="grid-icon" onclick="viewFile('${file.url}', '${file.sha}')">
+                            <i class="${iconClass}" style="font-size: 3rem;"></i>
+                        </div>
+                        <div class="grid-title" onclick="viewFile('${file.url}', '${file.sha}')">${item.name}</div>
+                        <div class="grid-actions">
+                            <button class="btn-icon-small" title="Edit" onclick="editFile('${file.url}', '${safePath}', '${file.sha}')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </button>
+                            <button class="btn-icon-small" title="Delete" onclick="deleteFile('${safePath}', '${file.sha}', true)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <div class="code-item-header">
+                        <div class="code-item-actions-left" style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" class="file-select-checkbox" data-path="${safePath}" onchange="toggleFileSelection('${safePath}')">
+                            <button class="btn-small" title="Edit" onclick="editFile('${file.url}', '${safePath}', '${file.sha}')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                <span>Edit</span>
+                            </button>
+                        </div>
+                        <div class="code-item-title">
+                            <h3 onclick="viewFile('${file.url}', '${file.sha}')" class="clickable-title">${item.name}</h3>
+                        </div>
+                        <div class="code-item-actions-right">
+                            <button class="btn-small btn-danger-icon" title="Delete" onclick="deleteFile('${safePath}', '${file.sha}', true)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                <span>Delete</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        savedCodesDiv.appendChild(div);
+    });
+}
+
+function enterFolder(folderName) {
+    currentPath += folderName + '/';
+    renderFileList();
+}
+
+function updateBreadcrumb() {
+    if (!breadcrumbDiv) return;
+    
+    const parts = currentPath.split('/').filter(p => p);
+    let html = '<span class="breadcrumb-item" onclick="navigateToRoot()" style="cursor: pointer;">root</span>';
+    
+    let buildPath = '';
+    parts.forEach((part, index) => {
+        buildPath += part + '/';
+        html += ` <span class="separator">/</span> <span class="breadcrumb-item" onclick="navigateToPath('${buildPath}')" style="cursor: pointer;">${part}</span>`;
+    });
+    
+    breadcrumbDiv.innerHTML = html;
+}
+
+function navigateToRoot() {
+    currentPath = '';
+    renderFileList();
+}
+
+function navigateToPath(path) {
+    currentPath = path;
+    renderFileList();
+}
+
+function toggleFileSelection(path) {
+    if (selectedFiles.has(path)) {
+        selectedFiles.delete(path);
+    } else {
+        selectedFiles.add(path);
+    }
+    updateMoveButton();
+}
+
+function updateMoveButton() {
+    if (moveSelectedBtn) {
+        moveSelectedBtn.style.display = selectedFiles.size > 0 ? 'inline-block' : 'none';
+        moveSelectedBtn.textContent = `Move Selected (${selectedFiles.size})`;
+    }
+}
+
+async function createNewFolder() {
+    // Security Check
+    const code = prompt("Enter folder security code:");
+    if (code !== getFolderPassword()) {
+        alert("Incorrect security code!");
+        return;
+    }
+
+    const folderName = prompt("Enter new folder name:");
+    if (!folderName) return;
+    
+    // Create a .gitkeep file to establish the folder
+    const path = currentPath + folderName + '/.gitkeep';
+    const content = btoa('Folder created');
+    
+    try {
+        // Use encodePath to handle spaces and special characters
+        const encodedPath = encodePath(path);
+        const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${encodedPath}`;
+        
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${CONFIG.token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: `Create folder ${folderName}`,
+                content: content
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || 'Failed to create folder');
+        }
+        
+        showStatus('✅ Folder created', 'success');
+        setTimeout(fetchFromGitHub, 500); // Small delay for API consistency
+    } catch (error) {
+        console.error(error);
+        showStatus(`❌ Error creating folder: ${error.message}`, 'error');
+    }
+}
+
+async function moveSelectedFiles() {
+    const targetFolder = prompt("Enter destination folder path (e.g., 'myfolder/' or leave empty for root):");
+    if (targetFolder === null) return;
+    
+    const destPath = targetFolder.trim();
+    // Ensure trailing slash if not empty
+    const finalDest = (destPath && !destPath.endsWith('/')) ? destPath + '/' : destPath;
+    
+    showStatus(`Moving ${selectedFiles.size} files...`, 'info');
+    
+    for (const filePath of selectedFiles) {
+        try {
+            // 1. Get file content
+            const file = allFiles.find(f => f.path === filePath);
+            if (!file) continue;
+            
+            const contentsUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${encodePath(filePath)}`;
+            const getRes = await fetch(contentsUrl, {
+                headers: { 'Authorization': `token ${CONFIG.token}` }
+            });
+            const getData = await getRes.json();
+            
+            // 2. Create new file
+            const fileName = filePath.split('/').pop();
+            const newPath = finalDest + fileName;
+            
+            // Don't move if path is same
+            if (newPath === filePath) continue;
+
+            const putUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${encodePath(newPath)}`;
+            await fetch(putUrl, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${CONFIG.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: `Move ${fileName} to ${finalDest}`,
+                    content: getData.content,
+                    sha: undefined // New file
+                })
+            });
+            
+            // 3. Delete old file
+            const delUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${encodePath(filePath)}`;
+            await fetch(delUrl, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `token ${CONFIG.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: `Moved to ${newPath}`,
+                    sha: file.sha
+                })
+            });
+            
+        } catch (error) {
+            console.error(`Failed to move ${filePath}`, error);
+        }
+    }
+    
+    showStatus('✅ Move completed', 'success');
+    selectedFiles.clear();
+    fetchFromGitHub();
+}
+
+function encodePath(path) {
+    return path.split('/').map(encodeURIComponent).join('/');
+}
+
 // Filter files based on search
 function filterFiles(searchTerm) {
     if (!searchTerm) {
-        displayFiles(allFiles);
+        renderFileList(); // Reset to current folder view
         return;
     }
     
     const term = searchTerm.toLowerCase();
+    // When searching, show flat list of matches
     const filtered = allFiles.filter(file => 
         file.path.toLowerCase().includes(term)
     );
     
-    displayFiles(filtered);
-}
-
-// Display files list
-function displayFiles(files) {
+    // Simple render for search results
     savedCodesDiv.innerHTML = '';
-    
-    if (files.length === 0) {
-        savedCodesDiv.innerHTML = '<p class="empty-message">No matching files found</p>';
-        return;
-    }
-    
-    files.forEach(file => {
+    filtered.forEach(file => {
         const div = document.createElement('div');
         div.className = 'code-item';
-        // Escape single quotes in path to prevent HTML attribute breakage
         const safePath = file.path.replace(/'/g, "\\'");
-        
         div.innerHTML = `
             <div class="code-item-header">
-                <div class="code-item-actions-left">
-                    <button class="btn-small" title="Edit" onclick="editFile('${file.url}', '${safePath}', '${file.sha}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                        <span>Edit</span>
-                    </button>
-                </div>
                 <div class="code-item-title">
                     <h3 onclick="viewFile('${file.url}', '${file.sha}')" class="clickable-title">${file.path}</h3>
                 </div>
                 <div class="code-item-actions-right">
-                    <button class="btn-small btn-danger-icon" title="Delete" onclick="deleteFile('${safePath}', '${file.sha}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                        <span>Delete</span>
-                    </button>
+                     <button class="btn-small" title="Edit" onclick="editFile('${file.url}', '${safePath}', '${file.sha}')">Edit</button>
                 </div>
             </div>
         `;
         savedCodesDiv.appendChild(div);
     });
+}
+
+// Display files list (Deprecated, replaced by renderFileList)
+function displayFiles(files) {
+    // Kept for compatibility if called elsewhere, but redirects to renderFileList
+    allFiles = files;
+    renderFileList();
 }
 
 // Edit File
@@ -759,6 +1192,36 @@ async function editFile(url, path, sha) {
             console.warn('UTF-8 decoding failed, falling back to raw decode', e);
             content = atob(cleanContent);
         }
+
+        // Check for encryption
+        if (content.startsWith('/* ENCRYPTED */')) {
+            if (typeof CryptoJS === 'undefined') {
+                throw new Error('Encryption library not loaded. Please refresh the page.');
+            }
+
+            const password = prompt('This file is encrypted. Enter password to decrypt:');
+            if (!password) {
+                throw new Error('Password required to edit encrypted file');
+            }
+            
+            try {
+                // Remove marker and trim whitespace
+                const encryptedData = content.replace('/* ENCRYPTED */', '').trim();
+                const bytes = CryptoJS.AES.decrypt(encryptedData, password);
+                const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+                
+                if (!decrypted) throw new Error('Wrong password or corrupted data');
+                
+                content = decrypted;
+                // Pre-fill password field so they don't have to re-enter on save
+                if (document.getElementById('filePassword')) {
+                    document.getElementById('filePassword').value = password;
+                }
+            } catch (e) {
+                console.error('Decryption error:', e);
+                throw new Error('Decryption failed. Wrong password?');
+            }
+        }
         
         // Parse content to separate metadata if possible
         // Our format is /* ... */ \n code
@@ -812,6 +1275,13 @@ async function editFile(url, path, sha) {
         editingFile = { path, sha };
         saveBtn.textContent = 'Update File';
         
+        // Show delete button in editor
+        const deleteBtn = document.getElementById('deleteBtn');
+        if (deleteBtn) {
+            deleteBtn.style.display = 'inline-block';
+            deleteBtn.onclick = () => deleteFile(path, sha);
+        }
+        
         // Disable fields that shouldn't change during edit (optional, but safer for path consistency)
         // codeTitleInput.disabled = true; 
         // languageSelect.disabled = true;
@@ -825,7 +1295,40 @@ async function editFile(url, path, sha) {
 }
 
 // Delete File
-async function deleteFile(path, sha) {
+async function deleteFile(path, sha, checkEncryption = false) {
+    if (checkEncryption) {
+        try {
+            // Fetch file content to check for encryption
+            const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+            const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${encodedPath}`;
+            const response = await fetch(url, {
+                headers: { 'Authorization': `token ${CONFIG.token}` }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.content) {
+                    const cleanContent = data.content.replace(/\n/g, '');
+                    let content;
+                    try {
+                        content = decodeURIComponent(escape(atob(cleanContent)));
+                    } catch (e) {
+                        content = atob(cleanContent);
+                    }
+                    
+                    if (content.startsWith('/* ENCRYPTED */')) {
+                        alert('This file is encrypted. Please open the file to delete it.');
+                        return;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error checking encryption status', e);
+            // If check fails, we might want to be safe and block, or allow. 
+            // Let's allow but warn.
+        }
+    }
+
     if (!confirm(`Are you sure you want to DELETE ${path}? This cannot be undone.`)) {
         return;
     }
@@ -849,6 +1352,17 @@ async function deleteFile(path, sha) {
         }
 
         showStatus(`🗑️ Deleted ${path}`, 'success');
+        
+        // If we are in editor or modal, redirect or close
+        if (editingFile && editingFile.path === path) {
+            resetForm();
+            // If on index.html, maybe clear URL params?
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        if (document.getElementById('fileViewModal')) {
+            document.getElementById('fileViewModal').style.display = 'none';
+        }
+
         fetchFromGitHub(); // Refresh list
 
     } catch (error) {
@@ -911,6 +1425,32 @@ async function viewFile(url, sha) {
         } catch (e) {
             content = atob(cleanContent);
         }
+
+        // Check for encryption
+        if (content.startsWith('/* ENCRYPTED */')) {
+            if (typeof CryptoJS === 'undefined') {
+                throw new Error('Encryption library not loaded. Please refresh the page.');
+            }
+
+            const password = prompt('This file is encrypted. Enter password to view:');
+            if (!password) {
+                throw new Error('Password required to view encrypted file');
+            }
+            
+            try {
+                // Remove marker and trim whitespace
+                const encryptedData = content.replace('/* ENCRYPTED */', '').trim();
+                const bytes = CryptoJS.AES.decrypt(encryptedData, password);
+                const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+                
+                if (!decrypted) throw new Error('Wrong password or corrupted data');
+                
+                content = decrypted;
+            } catch (e) {
+                console.error('Decryption error:', e);
+                throw new Error('Decryption failed. Wrong password?');
+            }
+        }
         
         // Parse metadata
         let code = content;
@@ -938,6 +1478,21 @@ async function viewFile(url, sha) {
             viewFileDescription.style.display = 'block';
         } else {
             viewFileDescription.style.display = 'none';
+        }
+
+        // Setup Delete Button in Modal
+        const deleteViewFileBtn = document.getElementById('deleteViewFileBtn');
+        if (deleteViewFileBtn) {
+            // We need the path. 'url' param might be path or blob url.
+            // In viewFile we tried to determine contentsUrl.
+            // Let's try to extract path from contentsUrl or use title if it matches
+            // Best way is to pass path to viewFile, but for now let's rely on what we have.
+            // Actually, we can use 'data.path' from the API response!
+            const filePath = data.path;
+            const fileSha = data.sha;
+            
+            deleteViewFileBtn.onclick = () => deleteFile(filePath, fileSha);
+            deleteViewFileBtn.style.display = 'inline-block';
         }
 
         // Store for download
@@ -1142,3 +1697,170 @@ function clearChatHistory() {
         loadChatHistory();
     }
 }
+
+function exportChatToText() {
+    const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+    if (history.length === 0) {
+        alert('No chat history to export.');
+        return;
+    }
+
+    let textContent = "Code Syncer - AI Chat History\n";
+    textContent += "================================\n\n";
+
+    history.forEach(msg => {
+        const role = msg.role === 'user' ? 'You' : 'AI';
+        textContent += `[${role}]:\n${msg.content}\n\n--------------------------------\n\n`;
+    });
+
+    const blob = new Blob([textContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-history-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function exportChatToPDF() {
+    const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+    if (history.length === 0) {
+        alert('No chat history to export.');
+        return;
+    }
+
+    // Check if html2pdf is loaded
+    if (typeof html2pdf === 'undefined') {
+        alert('PDF export library not loaded. Please check your internet connection.');
+        return;
+    }
+
+    // Create a temporary container for PDF generation
+    const element = document.createElement('div');
+    element.style.padding = '20px';
+    element.style.fontFamily = 'Arial, sans-serif';
+    element.style.color = '#000';
+    element.style.background = '#fff';
+
+    const title = document.createElement('h1');
+    title.textContent = 'Code Syncer - AI Chat History';
+    title.style.borderBottom = '2px solid #333';
+    title.style.paddingBottom = '10px';
+    element.appendChild(title);
+
+    const date = document.createElement('p');
+    date.textContent = `Date: ${new Date().toLocaleDateString()}`;
+    date.style.marginBottom = '20px';
+    date.style.color = '#666';
+    element.appendChild(date);
+
+    history.forEach(msg => {
+        const msgDiv = document.createElement('div');
+        msgDiv.style.marginBottom = '15px';
+        msgDiv.style.padding = '10px';
+        msgDiv.style.borderRadius = '5px';
+        msgDiv.style.backgroundColor = msg.role === 'user' ? '#f0f7ff' : '#f0f0f0';
+        msgDiv.style.borderLeft = msg.role === 'user' ? '4px solid #007bff' : '4px solid #6c757d';
+
+        const role = document.createElement('strong');
+        role.textContent = msg.role === 'user' ? 'You:' : 'AI:';
+        role.style.display = 'block';
+        role.style.marginBottom = '5px';
+        role.style.color = '#333';
+        msgDiv.appendChild(role);
+
+        const content = document.createElement('div');
+        // Simple formatting for code blocks in PDF
+        let formattedContent = msg.content
+            .replace(/```(\w*)([\s\S]*?)```/g, '<pre style="background:#333; color:#fff; padding:10px; border-radius:4px; overflow-x:hidden; white-space:pre-wrap;">$2</pre>')
+            .replace(/\n/g, '<br>');
+        
+        content.innerHTML = formattedContent;
+        content.style.color = '#444';
+        msgDiv.appendChild(content);
+
+        element.appendChild(msgDiv);
+    });
+
+    const opt = {
+        margin: 10,
+        filename: `chat-history-${new Date().toISOString().slice(0, 10)}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Generate PDF
+    html2pdf().set(opt).from(element).save();
+}
+
+// Folder Security Functions
+function changeFolderPassword() {
+    const currentPass = prompt('Enter current folder security code:');
+    if (currentPass !== getFolderPassword()) {
+        alert('Incorrect current code!');
+        return;
+    }
+    
+    const newPass = folderPassInput.value;
+    if (!newPass) {
+        alert('Please enter a new password in the input field.');
+        return;
+    }
+    
+    setFolderPassword(newPass);
+    alert('Folder security code updated successfully!');
+    folderPassInput.value = '';
+}
+
+async function deleteFolder(folderName) {
+    // Security Check
+    const code = prompt('Enter folder security code to DELETE this folder:');
+    if (code !== getFolderPassword()) {
+        alert('Incorrect security code!');
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to DELETE folder '${folderName}' and ALL its contents? This cannot be undone.`)) {
+        return;
+    }
+    
+    const folderPath = currentPath + folderName + '/';
+    showStatus(`Deleting folder ${folderName}...`, 'info');
+    
+    // Find all files in this folder
+    const filesToDelete = allFiles.filter(f => f.path.startsWith(folderPath));
+    
+    if (filesToDelete.length === 0) {
+        showStatus('Folder appears empty or already deleted', 'info');
+        renderFileList();
+        return;
+    }
+    
+    let deletedCount = 0;
+    for (const file of filesToDelete) {
+        try {
+            const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${encodePath(file.path)}`;
+            await fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `token ${CONFIG.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: `Delete folder ${folderName}`,
+                    sha: file.sha
+                })
+            });
+            deletedCount++;
+        } catch (e) {
+            console.error(`Failed to delete ${file.path}`, e);
+        }
+    }
+    
+    showStatus(`Deleted ${deletedCount} files in ${folderName}`, 'success');
+    setTimeout(fetchFromGitHub, 1000);
+}
+

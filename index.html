@@ -6,6 +6,7 @@
     <title>Code Syncer - Hacker Terminal</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" type='text/css' href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
 <body class="theme-black">
     <div class="full-screen-layout" style="grid-template-columns: 1fr;">
@@ -57,7 +58,7 @@
                     <div class="form-group">
                         <label for="repoInput">Repository Name</label>
                         <div style="display: flex; gap: 10px;">
-                            <input type="text" id="repoInput" class="text-input" placeholder="e.g. codesyncer">
+                            <input type="text" id="repoInput" class="text-input" style="flex: 1;" placeholder="e.g. codesyncer">
                             <button id="createRepoBtn" class="btn btn-small" title="Create this repository on GitHub">Create Repo</button>
                         </div>
                     </div>
@@ -75,6 +76,18 @@
                             Required for AI code generation. Stored locally. <a href="https://openrouter.ai/keys" target="_blank" style="color: var(--primary-color);">Get API Key</a>
                         </p>
                     </div>
+
+                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+                    
+                    <h3>Folder Security</h3>
+                    <div class="form-group">
+                        <label for="folderPassInput">Folder Password (Default: 0000)</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="password" id="folderPassInput" class="text-input" style="flex: 1;" placeholder="New Password">
+                            <button id="changeFolderPassBtn" class="btn btn-small">Change</button>
+                        </div>
+                    </div>
+
                     <button id="saveTokenBtn" class="btn">Save Configuration</button>
                 </div>
             </div>
@@ -175,8 +188,13 @@
                 </button>
             </div>
 
-            <div class="form-group" style="flex-grow: 1; display: flex; flex-direction: column;">
-                <label for="codeInput">Code Input</label>
+            <div class="form-group" id="codeEditorContainer" style="flex-grow: 1; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <label for="codeInput" style="margin-bottom: 0;">Code Input</label>
+                    <button id="fullScreenBtn" class="btn btn-small" title="Toggle Full Screen" style="padding: 2px 8px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                    </button>
+                </div>
                 <textarea 
                     id="codeInput" 
                     class="code-textarea" 
@@ -195,8 +213,14 @@
                 ></textarea>
             </div>
 
+            <div class="form-group">
+                <label for="filePassword">🔒 Password Protection (Optional)</label>
+                <input type="password" id="filePassword" class="text-input" placeholder="Enter password to encrypt this file...">
+            </div>
+
             <div class="button-group">
                 <button id="saveBtn" class="btn">Submit Code</button>
+                <button id="deleteBtn" class="btn btn-danger-icon" style="display: none;">Delete File</button>
                 <button id="clearBtn" class="btn btn-secondary">Clear</button>
             </div>
 
