@@ -666,19 +666,22 @@ function displayFiles(files) {
     files.forEach(file => {
         const div = document.createElement('div');
         div.className = 'code-item';
+        // Escape single quotes in path to prevent HTML attribute breakage
+        const safePath = file.path.replace(/'/g, "\\'");
+        
         div.innerHTML = `
             <div class="code-item-header">
                 <div class="code-item-actions-left">
-                    <button class="btn-small" title="Edit" onclick="editFile('${file.url}', '${file.path}', '${file.sha}')">
+                    <button class="btn-small" title="Edit" onclick="editFile('${file.url}', '${safePath}', '${file.sha}')">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                         <span>Edit</span>
                     </button>
                 </div>
                 <div class="code-item-title">
-                    <h3 onclick="viewFile('${file.path}', '${file.sha}')" class="clickable-title">${file.path}</h3>
+                    <h3 onclick="viewFile('${file.url}', '${file.sha}')" class="clickable-title">${file.path}</h3>
                 </div>
                 <div class="code-item-actions-right">
-                    <button class="btn-small btn-danger-icon" title="Delete" onclick="deleteFile('${file.path}', '${file.sha}')">
+                    <button class="btn-small btn-danger-icon" title="Delete" onclick="deleteFile('${safePath}', '${file.sha}')">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         <span>Delete</span>
                     </button>
@@ -693,13 +696,26 @@ function displayFiles(files) {
 async function editFile(url, path, sha) {
     try {
         showStatus('Loading file for editing...', 'info');
-        // Build the correct contents API URL
-        const contentsUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${path}`;
-        const response = await fetch(contentsUrl, {
+        
+        // Use the Blob URL directly from the tree API (more reliable for raw content)
+        // But we need to handle the response correctly
+        const response = await fetch(url, {
             headers: { 'Authorization': `token ${CONFIG.token}` }
         });
+
+        if (!response.ok) {
+            throw new Error(`HTTP Error: ${response.status}`);
+        }
+
         const data = await response.json();
-        const content = decodeURIComponent(escape(atob(data.content)));
+        
+        if (!data.content) {
+            throw new Error('File content is empty or too large');
+        }
+
+        // Clean base64 string (remove newlines) and decode
+        const cleanContent = data.content.replace(/\n/g, '');
+        const content = decodeURIComponent(escape(atob(cleanContent)));
         
         // Parse content to separate metadata if possible
         // Our format is /* ... */ \n code
@@ -802,15 +818,26 @@ async function deleteFile(path, sha) {
 async function viewFile(url, sha) {
     try {
         showStatus('Loading file...', 'info');
-        // The url parameter is now the path
-        const contentsUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${url}`;
-        const response = await fetch(contentsUrl, {
+        
+        // Use the Blob URL directly (passed as 'url' parameter)
+        // Note: In displayFiles, we pass file.url as the first arg to viewFile
+        const response = await fetch(url, {
             headers: { 'Authorization': `token ${CONFIG.token}` }
         });
+
+        if (!response.ok) {
+            throw new Error(`HTTP Error: ${response.status}`);
+        }
+
         const data = await response.json();
         
+        if (!data.content) {
+            throw new Error('File content is empty or too large');
+        }
+        
         // Decode content
-        const content = decodeURIComponent(escape(atob(data.content)));
+        const cleanContent = data.content.replace(/\n/g, '');
+        const content = decodeURIComponent(escape(atob(cleanContent)));
         
         // Parse metadata
         let code = content;
