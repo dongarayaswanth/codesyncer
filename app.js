@@ -79,12 +79,27 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Check for token
     if (CONFIG.token) {
-        fetchFromGitHub();
+        // If on repository page, fetch files
+        if (savedCodesDiv) {
+            fetchFromGitHub();
+        }
     } else {
         // Only show status if statusDiv exists (it might not on all pages)
         if (statusDiv) showStatus('⚠️ Please configure your GitHub Token', 'info');
-        // Don't auto-open settings on every page load, maybe just on home?
-        // openSettings(); 
+    }
+
+    // Check for URL parameters (for redirect from repository page)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('action') === 'edit') {
+        const path = urlParams.get('path');
+        const sha = urlParams.get('sha');
+        const url = urlParams.get('url');
+        if (path && sha) {
+            // Remove params from URL without refreshing
+            window.history.replaceState({}, document.title, window.location.pathname);
+            // Trigger edit
+            editFile(url, path, sha);
+        }
     }
 });
 
@@ -694,6 +709,19 @@ function displayFiles(files) {
 
 // Edit File
 async function editFile(url, path, sha) {
+    // Check if we are on the editor page
+    if (!codeTextarea) {
+        // We are likely on repository.html, redirect to index.html with params
+        const params = new URLSearchParams({
+            action: 'edit',
+            path: path,
+            sha: sha,
+            url: url // Pass the blob url too just in case, though we construct contents url from path now
+        });
+        window.location.href = `index.html?${params.toString()}`;
+        return;
+    }
+
     try {
         showStatus('Loading file for editing...', 'info');
         
