@@ -69,6 +69,7 @@ const viewFileCode = document.getElementById('viewFileCode');
 const downloadFileBtn = document.getElementById('downloadFileBtn');
 
 // New Elements for Folders & Encryption
+const createFileBtn = document.getElementById('createFileBtn');
 const createFolderBtn = document.getElementById('createFolderBtn');
 const moveSelectedBtn = document.getElementById('moveSelectedBtn');
 const breadcrumbDiv = document.getElementById('breadcrumb');
@@ -205,6 +206,7 @@ function setupEventListeners() {
     if (chatHistory) loadChatHistory();
 
     // Folder & Move Listeners
+    if (createFileBtn) createFileBtn.addEventListener('click', createNewFile);
     if (createFolderBtn) createFolderBtn.addEventListener('click', createNewFolder);
     if (moveSelectedBtn) moveSelectedBtn.addEventListener('click', moveSelectedFiles);
     if (changeFolderPassBtn) changeFolderPassBtn.addEventListener('click', changeFolderPassword);
@@ -832,6 +834,7 @@ function renderFileList() {
     sortedItems.forEach(item => {
         const div = document.createElement('div');
         div.className = 'code-item';
+        const menuId = `menu-${Math.random().toString(36).substr(2, 9)}`;
         
         if (item.type === 'folder') {
             if (currentViewMode === 'grid') {
@@ -842,9 +845,21 @@ function renderFileList() {
                         </div>
                         <div class="grid-title" onclick="enterFolder('${item.name}')">${item.name}</div>
                         <div class="grid-actions">
-                            <button class="btn-icon-small" title="Delete Folder" onclick="deleteFolder('${item.name}')">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                            </button>
+                            <div class="menu-container">
+                                <button class="menu-btn" onclick="toggleMenu('${menuId}', event)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                                </button>
+                                <div id="${menuId}" class="menu-dropdown">
+                                    <button class="menu-item" onclick="renameItem('${item.name}', 'folder')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        Rename
+                                    </button>
+                                    <button class="menu-item danger" onclick="deleteFolder('${item.name}')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -856,10 +871,21 @@ function renderFileList() {
                             <h3 onclick="enterFolder('${item.name}')" class="clickable-title">${item.name}</h3>
                         </div>
                         <div class="code-item-actions-right">
-                            <button class="btn-small btn-danger-icon" title="Delete Folder" onclick="deleteFolder('${item.name}')">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                <span>Delete</span>
-                            </button>
+                            <div class="menu-container">
+                                <button class="menu-btn" onclick="toggleMenu('${menuId}', event)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                                </button>
+                                <div id="${menuId}" class="menu-dropdown">
+                                    <button class="menu-item" onclick="renameItem('${item.name}', 'folder')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        Rename
+                                    </button>
+                                    <button class="menu-item danger" onclick="deleteFolder('${item.name}')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -902,12 +928,25 @@ function renderFileList() {
                         </div>
                         <div class="grid-title" onclick="viewFile('${file.url}', '${file.sha}')">${item.name}</div>
                         <div class="grid-actions">
-                            <button class="btn-icon-small" title="Edit" onclick="editFile('${file.url}', '${safePath}', '${file.sha}')">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                            </button>
-                            <button class="btn-icon-small" title="Delete" onclick="deleteFile('${safePath}', '${file.sha}', true)">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                            </button>
+                            <div class="menu-container">
+                                <button class="menu-btn" onclick="toggleMenu('${menuId}', event)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                                </button>
+                                <div id="${menuId}" class="menu-dropdown">
+                                    <button class="menu-item" onclick="editFile('${file.url}', '${safePath}', '${file.sha}')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        Edit Content
+                                    </button>
+                                    <button class="menu-item" onclick="renameItem('${item.name}', 'file')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        Rename
+                                    </button>
+                                    <button class="menu-item danger" onclick="deleteFile('${safePath}', '${file.sha}', true)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -916,19 +955,30 @@ function renderFileList() {
                     <div class="code-item-header">
                         <div class="code-item-actions-left" style="display: flex; align-items: center; gap: 10px;">
                             <input type="checkbox" class="file-select-checkbox" data-path="${safePath}" onchange="toggleFileSelection('${safePath}')">
-                            <button class="btn-small" title="Edit" onclick="editFile('${file.url}', '${safePath}', '${file.sha}')">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                                <span>Edit</span>
-                            </button>
                         </div>
                         <div class="code-item-title">
                             <h3 onclick="viewFile('${file.url}', '${file.sha}')" class="clickable-title">${item.name}</h3>
                         </div>
                         <div class="code-item-actions-right">
-                            <button class="btn-small btn-danger-icon" title="Delete" onclick="deleteFile('${safePath}', '${file.sha}', true)">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                <span>Delete</span>
-                            </button>
+                            <div class="menu-container">
+                                <button class="menu-btn" onclick="toggleMenu('${menuId}', event)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                                </button>
+                                <div id="${menuId}" class="menu-dropdown">
+                                    <button class="menu-item" onclick="editFile('${file.url}', '${safePath}', '${file.sha}')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        Edit Content
+                                    </button>
+                                    <button class="menu-item" onclick="renameItem('${item.name}', 'file')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        Rename
+                                    </button>
+                                    <button class="menu-item danger" onclick="deleteFile('${safePath}', '${file.sha}', true)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -981,6 +1031,46 @@ function updateMoveButton() {
     if (moveSelectedBtn) {
         moveSelectedBtn.style.display = selectedFiles.size > 0 ? 'inline-block' : 'none';
         moveSelectedBtn.textContent = `Move Selected (${selectedFiles.size})`;
+    }
+}
+
+async function createNewFile() {
+    const fileName = prompt("Enter file name (with extension):");
+    if (!fileName) return;
+    
+    const fileContent = prompt("Enter initial content (optional):") || '';
+    
+    const path = currentPath + fileName;
+    const content = btoa(fileContent);
+    
+    try {
+        const encodedPath = encodePath(path);
+        const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${encodedPath}`;
+        
+        showStatus(`Creating file ${fileName}...`, 'info');
+        
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${CONFIG.token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: `Create ${fileName}`,
+                content: content
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || 'Failed to create file');
+        }
+
+        showStatus(`✅ File created successfully!`, 'success');
+        setTimeout(fetchFromGitHub, 500);
+    } catch (error) {
+        showStatus('❌ Failed to create file: ' + error.message, 'error');
+        console.error(error);
     }
 }
 
@@ -1862,5 +1952,111 @@ async function deleteFolder(folderName) {
     
     showStatus(`Deleted ${deletedCount} files in ${folderName}`, 'success');
     setTimeout(fetchFromGitHub, 1000);
+}
+
+
+// Menu Functions
+function toggleMenu(id, event) {
+    if (event) event.stopPropagation();
+    const menu = document.getElementById(id);
+    // Close all other menus
+    document.querySelectorAll('.menu-dropdown').forEach(m => {
+        if (m.id !== id) m.classList.remove('show');
+    });
+    if (menu) menu.classList.toggle('show');
+}
+
+// Close menus when clicking outside
+window.addEventListener('click', () => {
+    document.querySelectorAll('.menu-dropdown').forEach(m => m.classList.remove('show'));
+});
+
+async function moveFile(oldPath, newPath, sha) {
+    try {
+        // 1. Get file content
+        const contentsUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${encodePath(oldPath)}`;
+        const getRes = await fetch(contentsUrl, {
+            headers: { 'Authorization': `token ${CONFIG.token}` }
+        });
+        const getData = await getRes.json();
+        
+        // 2. Create new file
+        const putUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${encodePath(newPath)}`;
+        await fetch(putUrl, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${CONFIG.token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: `Rename ${oldPath} to ${newPath}`,
+                content: getData.content,
+                sha: undefined // New file
+            })
+        });
+        
+        // 3. Delete old file
+        const delUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${encodePath(oldPath)}`;
+        await fetch(delUrl, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `token ${CONFIG.token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: `Moved to ${newPath}`,
+                sha: sha
+            })
+        });
+        return true;
+    } catch (error) {
+        console.error(`Failed to move ${oldPath}`, error);
+        return false;
+    }
+}
+
+async function renameItem(name, type) {
+    const newName = prompt(`Enter new name for ${type} '${name}':`, name);
+    if (!newName || newName === name) return;
+
+    if (type === 'folder') {
+        const oldFolderPath = currentPath + name + '/';
+        const newFolderPath = currentPath + newName + '/';
+        
+        // Security Check
+        const code = prompt('Enter folder security code to RENAME this folder:');
+        if (code !== getFolderPassword()) {
+            alert('Incorrect security code!');
+            return;
+        }
+
+        const filesToMove = allFiles.filter(f => f.path.startsWith(oldFolderPath));
+        showStatus(`Renaming folder... (${filesToMove.length} files)`, 'info');
+        
+        let successCount = 0;
+        for (const file of filesToMove) {
+            const relativePath = file.path.substring(oldFolderPath.length);
+            const newFilePath = newFolderPath + relativePath;
+            if (await moveFile(file.path, newFilePath, file.sha)) {
+                successCount++;
+            }
+        }
+        showStatus(`Renamed ${successCount} files`, 'success');
+        setTimeout(fetchFromGitHub, 1000);
+    } else {
+        const oldPath = currentPath + name;
+        const newPath = currentPath + newName;
+        const file = allFiles.find(f => f.path === oldPath);
+        
+        if (file) {
+            showStatus(`Renaming ${name}...`, 'info');
+            if (await moveFile(oldPath, newPath, file.sha)) {
+                showStatus('File renamed successfully', 'success');
+                setTimeout(fetchFromGitHub, 1000);
+            } else {
+                showStatus('Failed to rename file', 'error');
+            }
+        }
+    }
 }
 
