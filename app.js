@@ -118,6 +118,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const path = urlParams.get('path');
         const sha = urlParams.get('sha');
         const url = urlParams.get('url');
+        
+        // Set currentPath based on the file path
+        if (path.includes('/')) {
+            currentPath = path.substring(0, path.lastIndexOf('/') + 1);
+        } else {
+            currentPath = '';
+        }
+        
         if (path && sha) {
             // Remove params from URL without refreshing
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -599,6 +607,18 @@ function resetForm() {
     saveBtn.textContent = 'Save to GitHub';
     codeTitleInput.disabled = false;
     
+    // Hide delete button (only shown during edit)
+    const deleteBtn = document.getElementById('deleteBtn');
+    if (deleteBtn) {
+        deleteBtn.style.display = 'none';
+    }
+    
+    // Re-enable language selector
+    if (document.getElementById('customLanguageSelect')) {
+        document.getElementById('customLanguageSelect').style.pointerEvents = 'auto';
+        document.getElementById('customLanguageSelect').style.opacity = '1';
+    }
+    
     // Reset language to saved preference or default to python
     const savedLanguage = localStorage.getItem('preferred_language') || 'python';
     document.getElementById('language').value = savedLanguage;
@@ -636,10 +656,13 @@ async function saveToGitHub() {
         let path, message, sha;
 
         if (editingFile) {
-            // Updating existing file
+            // Updating existing file - keep it in the same folder
             path = editingFile.path;
             sha = editingFile.sha;
             message = `Update ${path}`;
+            
+            // Extract the original filename from path for metadata
+            title = path.split('/').pop();
         } else {
             // Creating new file
             const ext = getExtension(language);
@@ -651,7 +674,15 @@ async function saveToGitHub() {
                 const safeTitle = title.replace(/[^a-zA-Z0-9-_]/g, '_');
                 title = `${safeTitle}_${timestamp}${ext}`;
             }
-            path = `${language}/${title}`;
+            
+            // If we are inside a folder (currentPath is set), save the file there
+            // Otherwise, save it in the language folder as before
+            if (currentPath) {
+                path = `${currentPath}${title}`;
+            } else {
+                path = `${language}/${title}`;
+            }
+            
             message = `Add ${language} snippet: ${title}`;
         }
         
@@ -1269,7 +1300,24 @@ async function editFile(url, path, sha) {
 
         const data = await response.json();
         
-        if (!data.content) {
+        if (Array.isArray(data)) {
+            throw new Error('This path is a folder, not a file. Cannot edit.');
+        }
+        
+        // If the file is larger than 1MB, GitHub API returns a different structure without 'content'
+        // We might need to fetch the blob using the SHA if content is missing but sha is present
+        if (data.content === undefined && data.sha) {
+             const blobUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/git/blobs/${data.sha}`;
+             const blobResponse = await fetch(blobUrl, {
+                headers: { 'Authorization': `token ${CONFIG.token}` }
+             });
+             if (blobResponse.ok) {
+                 const blobData = await blobResponse.json();
+                 data.content = blobData.content;
+             }
+        }
+
+        if (data.content === undefined || data.content === null) {
             throw new Error('File content is empty or not found in response');
         }
 
@@ -1363,6 +1411,14 @@ async function editFile(url, path, sha) {
 
         // Set editing state
         editingFile = { path, sha };
+        
+        // Update currentPath to match the file's location
+        if (path.includes('/')) {
+            currentPath = path.substring(0, path.lastIndexOf('/') + 1);
+        } else {
+            currentPath = '';
+        }
+        
         saveBtn.textContent = 'Update File';
         
         // Show delete button in editor
@@ -1372,9 +1428,13 @@ async function editFile(url, path, sha) {
             deleteBtn.onclick = () => deleteFile(path, sha);
         }
         
-        // Disable fields that shouldn't change during edit (optional, but safer for path consistency)
-        // codeTitleInput.disabled = true; 
-        // languageSelect.disabled = true;
+        // Disable title and language fields during edit to prevent confusion
+        // The file must be updated in its current location
+        codeTitleInput.disabled = true;
+        if (document.getElementById('customLanguageSelect')) {
+            document.getElementById('customLanguageSelect').style.pointerEvents = 'none';
+            document.getElementById('customLanguageSelect').style.opacity = '0.6';
+        }
 
         showStatus(`Editing: ${path}`, 'success');
         
