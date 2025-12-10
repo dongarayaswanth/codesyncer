@@ -6,9 +6,17 @@
     <title>Code Syncer - Hacker Terminal</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" type='text/css' href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css" />
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.className = savedTheme;
+            }
+        })();
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
-<body class="theme-black">
+<body>
     <div class="full-screen-layout" style="grid-template-columns: 1fr;">
         <header>
             <div style="display: flex; align-items: center;">

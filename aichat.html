@@ -7,8 +7,14 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" type='text/css' href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'theme-black';
+            document.documentElement.className = savedTheme;
+        })();
+    </script>
 </head>
-<body class="theme-black">
+<body>
     <div class="full-screen-layout" style="grid-template-columns: 1fr;">
         <header>
             <div style="display: flex; align-items: center;">

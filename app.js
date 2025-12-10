@@ -559,14 +559,14 @@ async function createRepository() {
 
 // Theme Handling
 function changeTheme() {
-    document.body.className = themeSelect.value;
+    document.documentElement.className = themeSelect.value;
     localStorage.setItem('theme', themeSelect.value);
 }
 
 function loadTheme() {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
-        document.body.className = savedTheme;
+        document.documentElement.className = savedTheme;
         themeSelect.value = savedTheme;
     }
 }
