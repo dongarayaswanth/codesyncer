@@ -1772,8 +1772,6 @@ async function sendChatMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
     
-    const key = (typeof DEFAULT_AI_KEY !== 'undefined' && DEFAULT_AI_KEY) ? DEFAULT_AI_KEY : localStorage.getItem('ai_api_key');
-    
     // Add user message
     appendMessageToUI('user', text);
     chatInput.value = '';
@@ -1783,6 +1781,12 @@ async function sendChatMessage() {
     const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
     history.push({ role: 'user', content: text });
     localStorage.setItem('chat_history', JSON.stringify(history));
+
+    await processAIResponse(history);
+}
+
+async function processAIResponse(history) {
+    const key = (typeof DEFAULT_AI_KEY !== 'undefined' && DEFAULT_AI_KEY) ? DEFAULT_AI_KEY : localStorage.getItem('ai_api_key');
 
     // Show loading indicator
     const loadingDiv = document.createElement('div');
@@ -1816,7 +1820,7 @@ async function sendChatMessage() {
         });
 
         if (!response.ok) {
-            throw new Error('API Error');
+            throw new Error('API Error: ' + response.status);
         }
 
         const data = await response.json();
@@ -1834,11 +1838,30 @@ async function sendChatMessage() {
         localStorage.setItem('chat_history', JSON.stringify(history));
 
     } catch (error) {
-        loadingDiv.innerHTML = `
+        loadingDiv.remove();
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'chat-message system error-msg';
+        errorDiv.innerHTML = `
             <div class="chat-sender">System</div>
-            <div class="chat-bubble" style="color: var(--danger-color); border-color: var(--danger-color);">Error: ${error.message}</div>
+            <div class="chat-bubble" style="color: var(--danger-color); border-color: var(--danger-color);">
+                Error: ${error.message}
+                <div style="margin-top: 5px;">
+                    <button class="btn btn-small" onclick="retryLastMessage()" style="background: var(--danger-color); color: white; border: none;">Retry</button>
+                </div>
+            </div>
         `;
+        chatHistory.appendChild(errorDiv);
+        scrollToBottom();
     }
+}
+
+async function retryLastMessage() {
+    // Remove error message
+    const errorMsg = document.querySelector('.chat-message.system.error-msg');
+    if (errorMsg) errorMsg.remove();
+    
+    const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+    await processAIResponse(history);
 }
 
 function clearChatHistory() {

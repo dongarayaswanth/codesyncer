@@ -14,9 +14,9 @@
         })();
     </script>
 </head>
-<body>
-    <div class="full-screen-layout" style="grid-template-columns: 1fr;">
-        <header>
+<body style="padding: 0; overflow: hidden;">
+    <div class="full-screen-layout" style="grid-template-columns: 1fr; grid-template-rows: auto 1fr; gap: 0; height: 100vh; padding: 10px;">
+        <header style="margin-bottom: 0; padding-bottom: 10px;">
             <div style="display: flex; align-items: center;">
                 <h1>>_ Code Syncer</h1>
                 <nav class="main-nav">
@@ -87,8 +87,8 @@
             </div>
         </div>
 
-        <div class="chat-section" style="display: flex; flex-direction: column; height: calc(100vh - 140px); max-width: 1000px; margin: 0 auto; width: 100%;">
-            <div id="chatHistory" class="chat-history" style="flex-grow: 1; overflow-y: auto; padding: 20px; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--card-bg); margin-bottom: 20px;">
+        <div class="chat-section" style="display: flex; flex-direction: column; height: 100%; width: 100%; padding: 0; overflow: hidden;">
+            <div id="chatHistory" class="chat-history" style="flex-grow: 1; overflow-y: auto; padding: 20px; border: none; border-radius: 0; background: transparent; margin-bottom: 0;">
                 <!-- Chat messages will appear here -->
                 <div class="chat-welcome" style="text-align: center; opacity: 0.7; margin-top: 50px;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 10px;"><rect width="18" height="10" x="3" y="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" x2="8" y1="16" y2="16"/><line x1="16" x2="16" y1="16" y2="16"/></svg>
@@ -96,8 +96,8 @@
                 </div>
             </div>
             
-            <div class="chat-input-area" style="display: flex; gap: 10px; align-items: flex-end;">
-                <textarea id="chatInput" class="text-input" placeholder="Type your message..." style="flex-grow: 1; min-height: 50px; resize: vertical;"></textarea>
+            <div class="chat-input-area" style="display: flex; gap: 10px; align-items: flex-end; padding: 10px 20px; border-top: 1px solid var(--border-color); background: var(--bg-color);">
+                <textarea id="chatInput" class="text-input" placeholder="Type your message..." style="flex-grow: 1; min-height: 50px; resize: vertical; border: none; background: transparent; padding: 10px;"></textarea>
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                     <button id="chatSendBtn" class="btn" style="height: 40px;">Send</button>
                     <div style="display: flex; gap: 5px;">
